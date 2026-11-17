@@ -1,0 +1,20 @@
+{
+  "_comment": "K-Touch Apps tab: two folders. 'appid' is the Start-menu AppID (Get-StartApps); leave it out and set 'find' to look it up by name (for games still installing). 'match' tells PCDash which windows belong to the entry (a piece of the exe path, or an exe name) so the Screen tab can send it to the right screen.",
+  "games": [
+    {"id": "ark",       "name": "ARK: Survival Ascended", "short": "ARK",        "color": "#c9773b", "appid": "StudioWildcard.ARKSurvivalAscended_1w2mm55455e38!AppARKSurvivalAscendedShipping", "match": ["\\XboxGames\\ARK- "]},
+    {"id": "minecraft", "name": "Minecraft",              "short": "Minecraft",  "color": "#5c9e31", "appid": "Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game", "match": ["\\Minecraft for Windows\\"]},
+    {"id": "minecraftjava", "name": "Minecraft: Java Edition", "short": "MC Java", "color": "#8b5a2b", "appid": "Microsoft.4297127D64EC6_8wekyb3d8bbwe!Minecraft", "match": ["\\Microsoft.4297127D64EC6_8wekyb3d8bbwe\\LocalCache\\Local\\runtime\\"]},
+    {"id": "palworld",  "name": "Palworld",               "short": "Palworld",   "color": "#3a8fd6", "appid": "PocketpairInc.Palworld_ad4psfrxyesvt!AppPalShipping", "match": ["\\XboxGames\\Palworld\\"]},
+    {"id": "oncehuman", "name": "Once Human",             "short": "Once Human", "color": "#8a6cc9", "appid": "NetEaseGamesGlobal.OnceHuman_hfc15bhpepnfj!ONCE.HUMAN", "match": ["\\XboxGames\\Once Human\\"]},
+    {"id": "subnautica2","name": "Subnautica 2",          "short": "Subnautica 2","color": "#1fa7a0", "appid": "UnknownWorldsEntertainmen.Subnautica2_bh1f6rvenfkm2!AppSubnautica2Shipping", "match": ["\\XboxGames\\Subnautica 2\\"]},
+    {"id": "halo",      "name": "Halo: Campaign Evolved", "short": "Halo",       "color": "#4f6b3a", "appid": "Microsoft.198377053870B_8wekyb3d8bbwe!AppHaloCampaignEvolvedShipping", "match": ["\\XboxGames\\Halo"]}
+  ],
+  "apps": [
+    {"id": "bambu",   "name": "Bambu Studio",   "short": "Bambu Studio", "color": "#00ae42", "appid": "{6D809377-6AF0-444B-8957-A3773F02200E}\\Bambu Studio\\bambu-studio.exe", "match": ["bambu-studio.exe"]},
+    {"id": "elegoo",  "name": "ElegooSlicer",   "short": "Elegoo",       "color": "#2b6fd6", "appid": "{6D809377-6AF0-444B-8957-A3773F02200E}\\ElegooSlicer\\elegoo-slicer.exe", "match": ["elegoo-slicer.exe"]},
+    {"id": "fusion",  "name": "Autodesk Fusion","short": "Fusion",       "color": "#e8792b", "appid": "AutodeskInc.Fusion360", "match": ["fusion360.exe"]},
+    {"id": "blender", "name": "Blender",        "short": "Blender",      "color": "#e87d0d", "appid": "{6D809377-6AF0-444B-8957-A3773F02200E}\\Blender Foundation\\Blender 5.3\\blender-launcher.exe", "match": ["blender.exe"]},
+    {"id": "xbox",    "name": "Xbox",           "short": "Xbox",         "color": "#107c10", "appid": "Microsoft.GamingApp_8wekyb3d8bbwe!Microsoft.Xbox.App", "match": ["xboxpcapp.exe"]},
+    {"id": "steam",   "name": "Steam",          "short": "Steam",        "color": "#1b2838", "appid": "{7C5A40EF-A0FB-4BFC-874A-C0F2E0B9FA8E}\\Steam\\Steam.exe", "match": ["steamwebhelper.exe"]}
+  ]
+}

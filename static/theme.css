@@ -1,0 +1,174 @@
+/* PCDash "cyberpunk HUD" theme - shared by the Dashboard (/) and Stream Control (/stream).
+   Loaded after each page's own <style>: it restyles surfaces, colours and type only;
+   layout stays in the pages. Fonts are Windows built-ins (Bahnschrift, Consolas).
+
+   Palette: neon cyan + hot magenta + cyberpunk yellow on near-black.
+   Panels: angled cut corners (clip-path) with a 1px gradient frame drawn by a
+   ::before layer (the frame is the panel's own background showing through a
+   1px gap). Overlay: CRT scanlines and a slow scan beam. */
+
+:root {
+  --bg: #040509;
+  --panel: #0a0d18;
+  --card: rgba(10, 13, 24, 0.92);
+  --card2: rgba(18, 22, 40, 0.95);
+  --line: rgba(0, 240, 255, 0.18);
+  --text: #e8f6ff;
+  --dim: #7d8bb8;
+  --faint: #3f4870;
+  --accent: #00f0ff;          /* neon cyan */
+  --accent2: #b14cff;         /* violet */
+  --hot: #ff2a6d;             /* hot magenta */
+  --yellow: #fcee0a;          /* cyberpunk yellow */
+  --down: #00f0ff;
+  --up: #ff2a6d;
+  --ok: #00ff9c;
+  --warn: #fcee0a;
+  --bad: #ff2a6d;
+  --live: #ff2a6d;
+  --glow-c: rgba(0, 240, 255, 0.55);
+  --glow-h: rgba(255, 42, 109, 0.6);
+  --cut: 14px;                /* corner cut size */
+}
+
+html, body {
+  background-color: var(--bg);
+  font-family: "Bahnschrift", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------ backdrop -- */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(800px 500px at 0% 0%, rgba(0, 240, 255, 0.10), transparent 60%),
+    radial-gradient(900px 600px at 100% 100%, rgba(255, 42, 109, 0.10), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(177, 76, 255, 0.08), transparent 60%),
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+}
+/* A slow, faint scan beam (click-through). The dark CRT line pattern that used
+   to cover everything made text and the preview look grainy (user, 2026-11-11),
+   and animating background-position repainted the whole screen every frame.
+   Now it is one soft band moved with transform, which the GPU composites for free. */
+body::after {
+  content: ""; position: fixed; left: 0; right: 0; top: -40vh; height: 40vh; z-index: 9999; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 240, 255, 0.035) 45%, rgba(0, 240, 255, 0.07) 50%, rgba(0, 240, 255, 0.035) 55%, transparent 100%);
+  animation: scanBeam 11s linear infinite; will-change: transform;
+}
+@keyframes scanBeam { from { transform: translateY(0); } to { transform: translateY(180vh); } }
+
+/* -------------------------------------------------------------- panels -- */
+.card, .pill, .preview, .badge {
+  position: relative; isolation: isolate;
+  border: 0 !important; border-radius: 0 !important;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.85), rgba(177, 76, 255, 0.35) 35%,
+                                      rgba(177, 76, 255, 0.15) 65%, rgba(255, 42, 109, 0.85)) !important;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  box-shadow: none !important;
+}
+.card::before, .pill::before, .preview::before, .badge::before {
+  content: ""; position: absolute; inset: 1px; z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(0, 240, 255, 0.07), transparent 40%),
+    linear-gradient(160deg, #0d1122, #06070f);
+  clip-path: polygon(calc(var(--cut) - 0.5px) 0, 100% 0, 100% calc(100% - var(--cut) + 0.5px), calc(100% - var(--cut) + 0.5px) 100%, 0 100%, 0 calc(var(--cut) - 0.5px));
+}
+/* Corner tick on each panel's top-right: a small HUD mark. */
+.card > :first-child::after { content: none; }
+.card::after {
+  content: ""; position: absolute; top: 6px; right: 6px; width: 18px; height: 3px; pointer-events: none;
+  background: linear-gradient(90deg, var(--yellow) 0 6px, transparent 6px 9px, var(--yellow) 9px 12px, transparent 12px);
+  opacity: .8;
+}
+.badge { --cut: 8px; }
+.badge::before { background: linear-gradient(160deg, #0d1122, #06070f); }
+.pill { --cut: 12px; }
+.preview { --cut: 18px; }
+
+/* --------------------------------------------------------------- text -- */
+.label {
+  color: var(--yellow); letter-spacing: .18em; font-weight: 600; text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(252, 238, 10, 0.35);
+}
+.label::before { content: "\25B8\00A0"; color: var(--accent); text-shadow: 0 0 6px var(--glow-c); }
+.dim, .smeta, .gsub, .psub, .kv span:nth-child(odd) { color: var(--dim); }
+.num, .big, .rate, #gdown, #gup { text-shadow: 0 0 14px rgba(0, 240, 255, 0.35); }
+.gname { color: var(--accent) !important; letter-spacing: .2em !important; text-shadow: 0 0 10px var(--glow-c); }
+.gauge .gv { fill: #f2fbff; filter: drop-shadow(0 0 6px rgba(0, 240, 255, .6)); }
+.gauge .gu { fill: var(--yellow); }
+
+/* The clock: glitchy chromatic split. */
+#clock {
+  color: #eaffff; font-weight: 700; letter-spacing: .02em;
+  text-shadow: -3px 0 rgba(255, 42, 109, 0.85), 3px 0 rgba(0, 240, 255, 0.85), 0 0 24px rgba(0, 240, 255, 0.45);
+  animation: glitch 7s steps(1) infinite;
+}
+#clock .sec { color: var(--yellow); text-shadow: 0 0 10px rgba(252, 238, 10, .5); }
+@keyframes glitch {
+  0%, 96%, 100% { transform: none; }
+  96.5% { transform: translate(2px, -1px) skewX(-6deg); }
+  97.5% { transform: translate(-3px, 1px); }
+  98.5% { transform: translate(1px, 0) skewX(4deg); }
+}
+#date { color: var(--accent); letter-spacing: .12em; text-transform: uppercase; font-size: 18px !important;
+        text-shadow: 0 0 8px var(--glow-c); }
+.hostbox b { color: var(--yellow); }
+
+/* ---------------------------------------------------------------- bars -- */
+.bar { background: rgba(0, 240, 255, 0.10); border-radius: 0 !important; height: 6px; }
+.bar > i { border-radius: 0 !important;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 8px) !important;
+  box-shadow: 0 0 10px var(--glow-c); }
+
+/* ------------------------------------------------------------- buttons -- */
+button {
+  border-radius: 0 !important; border: 1px solid rgba(0, 240, 255, 0.35);
+  background: linear-gradient(180deg, rgba(0, 240, 255, 0.08), rgba(0, 0, 0, 0.3)), #070912;
+  color: var(--text); text-transform: uppercase; letter-spacing: .08em;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: background .15s, color .15s;
+}
+button:hover { background: linear-gradient(180deg, rgba(0, 240, 255, 0.25), rgba(0, 240, 255, 0.05)), #070912; color: #fff; }
+button:active { background: var(--accent); color: #001014; }
+button.go { border-color: var(--yellow); color: var(--yellow); }
+button.confirm { background: var(--hot) !important; color: #fff !important; border-color: var(--hot); }
+.toggle { clip-path: none; border-radius: 14px !important; text-transform: none; }
+.toggle.on { background: var(--ok); box-shadow: 0 0 12px rgba(0, 255, 156, 0.6); }
+
+.seg { background: #05060c; border-radius: 0 !important; box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.2); }
+.seg button.active, .mode button.active, .chip.active {
+  background: var(--yellow) !important; color: #0a0a00 !important; border-color: var(--yellow) !important;
+  text-shadow: none;
+}
+.mode { background: #05060c; border-radius: 0 !important; border-color: rgba(0, 240, 255, 0.3); }
+.chip.muted { color: var(--hot); border-color: var(--hot); }
+
+/* --------------------------------------------------------------- status -- */
+.dot { border-radius: 0 !important; transform: rotate(45deg); width: 9px !important; height: 9px !important; }
+.dot.on, .bigdot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.bigdot { border-radius: 0 !important; transform: rotate(45deg); }
+
+@keyframes livePulse { 0%, 100% { filter: drop-shadow(0 0 4px var(--hot)); } 50% { filter: drop-shadow(0 0 14px var(--hot)); } }
+.badge.live, #golive.on {
+  background: var(--hot) !important; color: #fff !important; animation: livePulse 1.4s ease-in-out infinite;
+}
+.badge.live::before { background: linear-gradient(160deg, #ff2a6d, #b3124a); }
+.badge.rec { color: var(--hot); }
+.preview.live { background: var(--hot) !important; }
+#golive { border-color: var(--hot); color: var(--hot); }
+
+/* -------------------------------------------------------------- drawer -- */
+body.glance .lower.open { background: rgba(4, 5, 10, 0.97) !important; border: 1px solid var(--accent) !important;
+  border-radius: 0 !important; box-shadow: 0 0 40px rgba(0, 240, 255, .2) !important;
+  clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px); }
+
+/* Scrollable chip rows (Scenes / Sources): no visible scrollbars; label fits its marker. */
+.strip .label { width: auto !important; flex: none; margin-right: 6px; }
+.strip { scrollbar-width: none; }
+.strip::-webkit-scrollbar { display: none; }
+
+#toast { background: #070912; border: 1px solid var(--accent); border-radius: 0; color: var(--text);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+#flash { border-radius: 0 !important; border-color: var(--yellow) !important; color: var(--yellow) !important;
+  letter-spacing: .15em; text-transform: uppercase; }

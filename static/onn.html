@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCDash</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  /* split: Stream Control on top, PC Dashboard underneath. dash / stream: one fills the screen. */
+  iframe { flex: 1 1 50%; width: 100%; border: 0; display: block; min-height: 0; }
+  .divider { flex: none; height: 2px; background: linear-gradient(90deg, #00f0ff, #b14cff 50%, #ff2a6d); box-shadow: 0 0 12px rgba(0,240,255,.6); }
+  body.dash #stream, body.dash .divider, body.stream #dash, body.stream .divider { display: none; }
+  #ark { display: none; }
+  body.ark #stream, body.ark #dash, body.ark .divider { display: none; }
+  body.ark #ark { display: block; }
+  #flash { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); padding: 22px 40px;
+    background: rgba(20, 25, 36, .94); border: 2px solid #4cc2ff; border-radius: 16px; color: #e6e9ef;
+    font: 600 34px "Segoe UI", system-ui, sans-serif; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #flash.show { opacity: 1; }
+  body::after { content: none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css">
+</head>
+<body class="split">
+  <iframe id="stream" src="/stream" title="Stream Control"></iframe>
+  <div class="divider"></div>
+  <iframe id="dash" src="/" title="PC Dashboard"></iframe>
+  <iframe id="ark" title="ArkPanel"></iframe>
+  <div id="flash"></div>
+<script>
+// The KNOMI's left/right swipes change the view on the PC; follow it here.
+let view = "split", first = true, boot = null;
+let since = null;
+async function poll() {
+  try {
+    const q = since == null ? "" : `?since=${since}&boot=${boot}`;
+    const j = await (await fetch("/api/onn/view" + q, { cache: "no-store" })).json();
+    since = j.changed;
+    if (boot && j.boot && j.boot !== boot) { location.reload(); return; }   // PCDash restarted: load the new page
+    boot = boot || j.boot;
+    if (j.view !== view && j.view !== "discord") {
+      view = j.view;
+      document.body.className = view;
+      // ArkPanel loads the first time it is shown, then stays signed in.
+      const ark = document.getElementById("ark");
+      if (view === "ark" && !ark.src) ark.src = "/ark-open";
+      if (!first) {
+        const f = document.getElementById("flash");
+        f.textContent = j.name; f.classList.add("show");
+        clearTimeout(poll.t); poll.t = setTimeout(() => f.classList.remove("show"), 1200);
+      }
+      window.dispatchEvent(new Event("resize"));
+    }
+    first = false;
+  } catch (e) {}
+}
+// Long-poll: the server answers as soon as the view changes (or after 25 s).
+(async function loop() { for (;;) { const t = Date.now(); await poll(); if (Date.now() - t < 200) await new Promise(r => setTimeout(r, 300)); } })();
+</script>
+</body>
+</html>

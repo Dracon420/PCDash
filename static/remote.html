@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040509">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PCDash">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+<title>PCDash Remote</title>
+<style>
+:root {
+  --bg: #040509; --card: #0b0e1c; --card2: #121730; --line: #16304a;
+  --text: #e8f6ff; --dim: #7d8bb8; --faint: #3f4870;
+  --accent: #00f0ff; --violet: #b14cff; --yellow: #fcee0a;
+  --ok: #00ff9c; --bad: #ff2a6d;
+  --tabh: 64px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.3 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+body { min-height: 100vh; padding-bottom: calc(var(--tabh) + env(safe-area-inset-bottom)); overscroll-behavior-y: none; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+
+header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px; background: rgba(4,5,9,.92);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 18px; letter-spacing: .14em; font-weight: 700; color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,240,255,.5); }
+header .sp { flex: 1; }
+#clock { color: var(--dim); font-variant-numeric: tabular-nums; }
+#link { width: 10px; height: 10px; border-radius: 50%; background: var(--faint); }
+#link.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+#link.bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+#livepill { display: none; padding: 2px 8px; border-radius: 6px; background: var(--bad); color: #fff;
+  font-weight: 700; font-size: 12px; letter-spacing: .1em; }
+#livepill.on { display: inline-block; }
+
+main { padding: 14px 16px 24px; max-width: 760px; margin: 0 auto; }
+.page { display: none; }
+.page.on { display: block; }
+h2 { margin: 6px 0 12px; font-size: 13px; letter-spacing: .16em; color: var(--dim); font-weight: 600; text-transform: uppercase; }
+
+/* tiles */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.tile { position: relative; aspect-ratio: 16/10; border-radius: 12px; overflow: hidden; background: var(--card2);
+  border: 1px solid var(--line); padding: 0; text-align: left; }
+.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 45%, rgba(0,0,0,.85)); }
+.tile span { position: absolute; left: 10px; right: 10px; bottom: 8px; z-index: 1; font-weight: 600; font-size: 15px;
+  text-shadow: 0 1px 4px #000; }
+.tile .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; z-index: 1; }
+.tile:active { transform: scale(.97); border-color: var(--accent); }
+
+/* cards and rows */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.srv-name { font-weight: 600; font-size: 17px; }
+.meta { color: var(--dim); font-size: 13px; margin-top: 2px; }
+.players { margin-left: auto; text-align: right; color: var(--accent); font-weight: 700; font-size: 20px; white-space: nowrap; }
+.players small { display: block; color: var(--dim); font-weight: 400; font-size: 11px; }
+.btns { display: flex; gap: 8px; margin-top: 12px; }
+.btn { flex: 1; min-height: 46px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line);
+  font-weight: 600; padding: 8px 10px; }
+.btn:active { border-color: var(--accent); }
+.btn.go { background: rgba(0,255,156,.12); border-color: rgba(0,255,156,.5); color: var(--ok); }
+.btn.stop { background: rgba(255,42,109,.12); border-color: rgba(255,42,109,.5); color: var(--bad); }
+.btn.on { background: rgba(0,240,255,.15); border-color: var(--accent); color: var(--accent); }
+.btn.warn { background: rgba(252,238,10,.12); border-color: rgba(252,238,10,.5); color: var(--yellow); }
+.btn:disabled { opacity: .35; }
+
+/* stream */
+.status { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#st_live { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: var(--dim); }
+#st_live.on { color: var(--bad); text-shadow: 0 0 14px rgba(255,42,109,.6); }
+#st_rec { color: var(--bad); font-weight: 600; }
+#st_health { color: var(--dim); font-size: 13px; width: 100%; }
+.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sgrid .btn { min-height: 60px; font-size: 16px; }
+#b_live { grid-column: 1 / -1; min-height: 70px; font-size: 20px; letter-spacing: .05em; }
+.scenes { display: flex; flex-wrap: wrap; gap: 8px; }
+.scenes .btn { flex: 1 1 140px; }
+
+/* pc */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat .k { color: var(--dim); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.stat .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 14px; color: var(--dim); font-weight: 400; }
+.meter { height: 6px; border-radius: 3px; background: var(--card2); margin-top: 6px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s; }
+
+/* mixer */
+.mix { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.mix:last-child { border-bottom: 0; }
+.mix .nm { flex: 0 0 92px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mix input { flex: 1; min-width: 0; accent-color: var(--accent); height: 28px; }
+.mix.muted input { accent-color: var(--faint); }
+.mix .pc { flex: 0 0 40px; text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
+.mix .btn { flex: 0 0 52px; min-height: 40px; padding: 4px; }
+.mix.muted .btn { background: #4a0a22; }
+
+/* screen */
+.scr { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.scr:last-child { border-bottom: 0; }
+.scr .nm { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr .seg { display: flex; flex: none; gap: 4px; }
+.scr .btn { flex: 0 0 58px; min-height: 40px; padding: 4px 2px; font-size: 13px; }
+.scr.all .nm { color: var(--accent); }
+
+/* tab bar */
+nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex;
+  padding-bottom: env(safe-area-inset-bottom); background: rgba(11,14,28,.97); border-top: 1px solid var(--line); }
+nav button { flex: 1; height: var(--tabh); background: none; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; color: var(--dim); font-size: 11px; }
+nav button svg { width: 24px; height: 24px; }
+nav button.on { color: var(--accent); }
+nav button.on svg { filter: drop-shadow(0 0 6px rgba(0,240,255,.7)); }
+
+/* toast + confirm */
+#toast { position: fixed; left: 50%; bottom: calc(var(--tabh) + 18px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--card2); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; opacity: 0;
+  transition: opacity .2s; pointer-events: none; z-index: 9; max-width: 90vw; text-align: center; }
+#toast.on { opacity: 1; }
+#modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+#modal.on { display: flex; }
+#modal .card { width: 100%; max-width: 380px; margin: 0; border-color: var(--violet); }
+#modal p { margin: 4px 0 6px; font-size: 18px; white-space: pre-line; }
+.empty { color: var(--dim); padding: 20px 0; text-align: center; }
+#offline { display: none; background: rgba(255,42,109,.12); border: 1px solid rgba(255,42,109,.5); color: var(--bad);
+  padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; }
+#offline.on { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <span id="link"></span>
+  <h1>PCDASH</h1>
+  <span id="livepill">LIVE</span>
+  <span class="sp"></span>
+  <span id="clock"></span>
+</header>
+
+<main>
+  <div id="offline">Can't reach the PC. Retrying...</div>
+
+  <section class="page" id="p_games"><h2>Games</h2><div class="grid" id="games"></div></section>
+  <section class="page" id="p_apps"><h2>Apps</h2><div class="grid" id="apps"></div></section>
+  <section class="page" id="p_servers"><h2>Game servers</h2><div id="servers"><div class="empty">Waiting for the PC...</div></div></section>
+
+  <section class="page" id="p_stream">
+    <div class="card">
+      <div class="status"><span id="st_live">OFF AIR</span><span id="st_rec"></span><span id="st_health"></span></div>
+    </div>
+    <div class="sgrid">
+      <button class="btn" id="b_live" data-s="live">Go Live</button>
+      <button class="btn" id="b_rec" data-s="rec">Record</button>
+      <button class="btn" id="b_pause" data-s="pause">Pause</button>
+      <button class="btn" id="b_clip" data-s="clip">Save Clip</button>
+      <button class="btn" id="b_mic" data-s="mic">Mic</button>
+      <button class="btn" id="b_cam" data-s="cam">Webcam</button>
+    </div>
+    <h2 style="margin-top:20px">Scenes</h2>
+    <div class="scenes" id="scenes"></div>
+  </section>
+
+  <section class="page" id="p_pc">
+    <div class="card stats" id="stats"></div>
+    <h2>Volume mixer</h2>
+    <div class="card" id="mixer"><div class="empty">Waiting for the PC...</div></div>
+  </section>
+
+  <section class="page" id="p_screen">
+    <h2>Which screen things open on</h2>
+    <div class="card" id="screens"></div>
+  </section>
+</main>
+
+<nav id="tabs"></nav>
+<div id="toast"></div>
+<div id="modal"><div class="card"><p id="m_q"></p><div class="btns">
+  <button class="btn" id="m_no">Cancel</button><button class="btn stop" id="m_yes">Yes</button></div></div></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ICONS = {
+  games: '<path d="M6 9h4M8 7v4M15 10h.01M18 8h.01M7 5h10a5 5 0 0 1 4.9 6l-1 5a2.6 2.6 0 0 1-4.6 1.2L14.5 15h-5l-1.8 2.2A2.6 2.6 0 0 1 3.1 16l-1-5A5 5 0 0 1 7 5z"/>',
+  apps: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  servers: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+  stream: '<circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/>',
+  pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  screen: '<rect x="2" y="5" width="12" height="9" rx="1.5"/><rect x="15" y="8" width="7" height="11" rx="1.5"/><path d="M6 18h4"/>',
+};
+const TABS = [["games","Games"],["apps","Apps"],["servers","Servers"],["stream","Stream"],["pc","PC"],["screen","Screen"]];
+const SCREENS = [["samsung","Samsung"],["tv","TV"],["onn","Onn"]];
+let S = null, tab = "games";
+const sig = {};
+
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === "p_" + t));
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+  try { localStorage.setItem("pcdash_tab", t); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+$("tabs").innerHTML = TABS.map(([t, n]) =>
+  `<button data-t="${t}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[t]}</svg>${n}</button>`).join("");
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setTab(b.dataset.t); });
+try { const t = localStorage.getItem("pcdash_tab"); if (TABS.some(([k]) => k === t)) tab = t; } catch (e) {}
+setTab(tab);
+
+let toastT;
+function toast(msg) {
+  $("toast").textContent = msg; $("toast").classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => $("toast").classList.remove("on"), 2200);
+}
+let pending = null;
+function confirmDo(q, action, msg) {
+  pending = [action, msg]; $("m_q").textContent = q; $("modal").classList.add("on");
+}
+$("m_no").onclick = () => { pending = null; $("modal").classList.remove("on"); };
+$("m_yes").onclick = () => { $("modal").classList.remove("on"); if (pending) send(...pending); pending = null; };
+
+async function send(action, msg) {
+  try {
+    const r = await fetch("/api/do", { method: "POST", headers: { "Content-Type": "application/json", "X-PCDash-Remote": "1" },
+      body: JSON.stringify({ action }) });
+    toast(r.ok ? (msg || "Sent") : "The PC refused that");
+    setTimeout(poll, 400);
+  } catch (e) { toast("Can't reach the PC"); }
+}
+
+function dur(s) { s = s | 0; const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, x = s % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+
+function tiles(el, list) {
+  const k = JSON.stringify(list.map((g) => [g.id, g.name]));
+  if (sig[el] === k) return; sig[el] = k;
+  $(el).innerHTML = list.length ? list.map((g) =>
+    `<button class="tile" data-id="${esc(g.id)}" data-name="${esc(g.name)}"><img loading="lazy" alt="" src="/tile/${encodeURIComponent(g.id)}.jpg" onerror="this.remove()"><i class="bar" style="background:${esc(g.color || "#00f0ff")}"></i><span>${esc(g.short || g.name)}</span></button>`).join("")
+    : '<div class="empty">Nothing here yet</div>';
+}
+for (const el of ["games", "apps"]) {
+  $(el).addEventListener("click", (e) => { const b = e.target.closest(".tile");
+    if (b) send("launch:" + b.dataset.id, "Starting " + b.dataset.name + "..."); });
+}
+
+function renderServers(list) {
+  const k = JSON.stringify(list.map((s) => [s.id, s.on]));
+  if (sig.srv !== k) {
+    sig.srv = k;
+    $("servers").innerHTML = list.length ? list.map((s, i) => `<div class="card" data-i="${i}">
+      <div class="row"><span class="dot"></span><div style="min-width:0"><div class="srv-name">${esc(s.name)}</div><div class="meta"></div></div>
+      <div class="players"></div></div>
+      <div class="btns">${s.on
+        ? `<button class="btn warn" data-a="restart">Restart</button><button class="btn stop" data-a="stop">Stop</button>`
+        : `<button class="btn go" data-a="start">Start</button>`}</div></div>`).join("")
+      : '<div class="empty">No servers</div>';
+  }
+  $("servers").querySelectorAll(".card").forEach((c) => {
+    const s = list[c.dataset.i]; if (!s) return;
+    c.querySelector(".dot").classList.toggle("on", s.on);
+    c.querySelector(".meta").textContent = [s.game, s.host, s.on ? "up " + s.uptime : "off", s.note].filter(Boolean).join(" · ");
+    c.querySelector(".players").innerHTML = s.on && s.players != null ? `${esc(s.players)}<small>players</small>` : "";
+  });
+}
+$("servers").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-a]"); if (!b || !S) return;
+  const s = S.servers[b.closest(".card").dataset.i]; const a = b.dataset.a;
+  const action = `server:${s.id}:${a}`, msg = `${a} sent to ${s.name}`;
+  if (a === "start") send(action, msg);
+  else confirmDo(`${a === "stop" ? "Stop" : "Restart"} ${s.name}?\nAnyone playing will be disconnected.`, action, msg);
+});
+
+function renderStream(st) {
+  const live = $("st_live");
+  live.textContent = !st.obs ? "OBS CLOSED" : st.live ? "LIVE " + dur(st.live_s) : "OFF AIR";
+  live.classList.toggle("on", st.live);
+  $("livepill").classList.toggle("on", st.live);
+  $("st_rec").textContent = st.rec ? (st.paused ? "REC PAUSED " : "REC ") + dur(st.rec_s) : "";
+  $("st_health").textContent = st.live ? `${st.bitrate} Mbps · ${st.drop}% dropped` : (st.scene ? "Scene: " + st.scene : "");
+  const set = (id, txt, cls, dis) => { const b = $(id); b.textContent = txt; b.className = "btn " + (cls || ""); b.disabled = !!dis; };
+  set("b_live", st.live ? "End Stream" : "Go Live", st.live ? "stop" : "go", !st.obs);
+  set("b_rec", st.rec ? "Stop Recording" : "Record", st.rec ? "stop" : "", !st.obs);
+  set("b_pause", st.paused ? "Resume" : "Pause", st.paused ? "on" : "", !st.obs || !st.rec);
+  set("b_clip", "Save Clip", "", !st.obs || !st.clips);
+  set("b_mic", st.mic_muted ? "Mic muted" : "Mic on", st.mic_muted ? "stop" : "on", !st.obs);
+  set("b_cam", st.cam ? "Webcam on" : "Webcam off", st.cam ? "on" : "", !st.obs);
+  const k = JSON.stringify([st.scenes, st.scene]);
+  if (sig.sc !== k) {
+    sig.sc = k;
+    $("scenes").innerHTML = (st.scenes || []).map((n) =>
+      `<button class="btn ${n === st.scene ? "on" : ""}" data-n="${esc(n)}">${esc(n)}</button>`).join("") || '<div class="empty">OBS is closed</div>';
+  }
+}
+document.querySelector(".sgrid").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-s]"); if (!b || b.disabled || !S) return;
+  const st = S.stream;
+  switch (b.dataset.s) {
+    case "live": st.live ? confirmDo("End the stream?", "obs:stream_stop", "Ending stream...")
+                         : confirmDo("Go LIVE now?", "obs:stream_start", "Going live..."); break;
+    case "rec": st.rec ? confirmDo("Stop recording?", "obs:record_stop", "Recording saved")
+                       : send("obs:record_start", "Recording..."); break;
+    case "pause": send("obs:record_pause", st.paused ? "Resumed" : "Paused"); break;
+    case "clip": send("obs:replay_save", "Clip saved"); break;
+    case "mic": send("obs:mic_toggle", st.mic_muted ? "Mic on" : "Mic muted"); break;
+    case "cam": send("obs:cam_toggle", st.cam ? "Webcam off" : "Webcam on"); break;
+  }
+});
+$("scenes").addEventListener("click", (e) => { const b = e.target.closest("[data-n]"); if (b) send("scene:" + b.dataset.n, "Scene: " + b.dataset.n); });
+
+function renderPC(p) {
+  const pct = (v) => Math.max(0, Math.min(100, v || 0));
+  const col = (v) => v >= 90 ? "var(--bad)" : v >= 70 ? "var(--yellow)" : "var(--accent)";
+  const stat = (k, v, unit, m) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<small> ${unit}</small></div>` +
+    (m == null ? "" : `<div class="meter"><i style="width:${pct(m)}%;background:${col(m)}"></i></div>`) + "</div>";
+  const ram = p.ram_total ? p.ram_used / p.ram_total * 100 : 0, vram = p.vram_total ? p.vram / p.vram_total * 100 : 0;
+  $("stats").innerHTML =
+    stat("CPU", Math.round(p.cpu), "% · " + p.cpu_ghz + " GHz", p.cpu) +
+    stat("GPU", Math.round(p.gpu), "% · " + p.gpu_t + "°C", p.gpu) +
+    stat("RAM", p.ram_used, "/ " + p.ram_total + " GB", ram) +
+    stat("VRAM", p.vram, "/ " + p.vram_total + " GB", vram) +
+    stat("Download", p.down, "Mbps") + stat("Upload", p.up, "Mbps") +
+    stat("GPU fan", p.fan, "%");
+}
+
+const mixHold = {};      // app id -> time until which the PC's value is ignored (just moved)
+function renderMixer(list) {
+  const k = list.map((m) => m.id).join("|");
+  if (sig.mix !== k) {
+    sig.mix = k;
+    $("mixer").innerHTML = list.length ? list.map((m) => `<div class="mix" data-id="${esc(m.id)}">
+      <span class="nm">${esc(m.name)}</span><input type="range" min="0" max="100" step="1">
+      <span class="pc"></span><button class="btn">🔊</button></div>`).join("") : '<div class="empty">Nothing is playing sound</div>';
+  }
+  list.forEach((m) => {
+    const row = $("mixer").querySelector(`.mix[data-id="${CSS.escape(m.id)}"]`); if (!row) return;
+    const r = row.querySelector("input");
+    if (Date.now() > (mixHold[m.id] || 0) && document.activeElement !== r) { r.value = m.vol; row.querySelector(".pc").textContent = m.vol + "%"; }
+    row.classList.toggle("muted", !!m.mute);
+    row.querySelector(".btn").textContent = m.mute ? "🔇" : "🔊";
+  });
+}
+$("mixer").addEventListener("input", (e) => {
+  const row = e.target.closest(".mix"); if (!row) return;
+  mixHold[row.dataset.id] = Date.now() + 3000; row.querySelector(".pc").textContent = e.target.value + "%";
+});
+$("mixer").addEventListener("change", (e) => {
+  const row = e.target.closest(".mix"); if (!row) return;
+  mixHold[row.dataset.id] = Date.now() + 3000;
+  send(`mix:${row.dataset.id}:${e.target.value}`, `${row.querySelector(".nm").textContent} ${e.target.value}%`);
+  e.target.blur();
+});
+$("mixer").addEventListener("click", (e) => {
+  const b = e.target.closest(".btn"); if (!b) return;
+  const row = b.closest(".mix");
+  send(`mix:${row.dataset.id}:mute`, `${row.querySelector(".nm").textContent} ${row.classList.contains("muted") ? "unmuted" : "muted"}`);
+});
+
+function renderScreens(sc, items) {
+  const rows = [{ id: "games", name: "All games", all: true }].concat(items);
+  const k = JSON.stringify(rows.map((r) => r.id)) + [sc.samsung, sc.tv, sc.onn];
+  if (sig.scr !== k) {
+    sig.scr = k;
+    $("screens").innerHTML = rows.map((r) => `<div class="scr ${r.all ? "all" : ""}" data-id="${esc(r.id)}">
+      <span class="nm">${esc(r.short || r.name)}</span><span class="seg">${SCREENS.map(([w, n]) =>
+        `<button class="btn" data-w="${w}" ${sc[w] ? "" : "disabled"}>${n}</button>`).join("")}</span></div>`).join("");
+  }
+  $("screens").querySelectorAll(".scr").forEach((row) => {
+    const cur = row.dataset.id === "games" ? sc.game : (sc.assign || {})[row.dataset.id];
+    row.querySelectorAll("[data-w]").forEach((b) => b.classList.toggle("on", b.dataset.w === cur));
+  });
+}
+$("screens").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-w]"); if (!b || b.disabled) return;
+  const row = b.closest(".scr");
+  send(`screen:${row.dataset.id}:${b.dataset.w}`, `${row.querySelector(".nm").textContent} → ${b.textContent}`);
+});
+
+let fails = 0, timer;
+async function poll() {
+  clearTimeout(timer);
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (r.status === 403) { document.body.innerHTML = '<main><div class="card">This phone isn\'t signed in. Open the link with the key again.</div></main>'; return; }
+    if (!r.ok) throw new Error(r.status);
+    S = await r.json(); fails = 0;
+    $("link").className = "ok"; $("offline").classList.remove("on");
+    $("clock").textContent = S.time || "";
+    tiles("games", S.games || []); tiles("apps", S.apps || []);
+    renderServers(S.servers || []); renderStream(S.stream || {}); renderPC(S.pc || {}); renderMixer(S.mixer || []);
+    renderScreens(S.screen || {}, (S.games || []).concat(S.apps || []));
+  } catch (e) {
+    if (++fails > 1) { $("link").className = "bad"; $("offline").classList.add("on"); }
+  }
+  if (!document.hidden) timer = setTimeout(poll, fails ? 4000 : 1500);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+poll();
+</script>
+</body>
+</html>

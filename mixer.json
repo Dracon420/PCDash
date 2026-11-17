@@ -1,0 +1,11 @@
+{
+  "discord.exe": {
+    "vol": 20,
+    "name": "Discord",
+    "mute": false
+  },
+  "palworld-wingdk-shipping.exe": {
+    "vol": 100,
+    "name": "Palworld"
+  }
+}

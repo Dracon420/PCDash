@@ -1,0 +1,13 @@
+{
+  "_comment": "Webcam background per game. 'match' = pieces of the game's program path (lower case). Your own picture: backgrounds\\<id>.jpg (or .png/.webp), used as is; otherwise game-art\\<id>.* is used, softened. backgrounds\\default.* when no game is running. Changes apply within a few seconds, no restart needed.",
+  "enabled": true,
+  "source": "Cam Background",
+  "games": {
+    "ark":         {"match": ["\\xboxgames\\ark- ", "\\arkascended.exe"]},
+    "palworld":    {"match": ["\\xboxgames\\palworld\\", "palworld-wingdk-shipping.exe"]},
+    "minecraft":   {"match": ["\\xboxgames\\minecraft for windows\\", "\\minecraft.windows.exe"]},
+    "minecraftjava": {"match": ["\\microsoft.4297127d64ec6_8wekyb3d8bbwe\\localcache\\local\\runtime\\"]},
+    "oncehuman":   {"match": ["\\xboxgames\\once human\\"]},
+    "subnautica2": {"match": ["\\xboxgames\\subnautica 2\\"]}
+  }
+}

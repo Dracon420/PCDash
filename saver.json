@@ -1,0 +1,7 @@
+{
+  "_comment": "Game-art screensaver run by PCDash (saver.py). Starts after idle_minutes with no key/mouse/controller input (game_idle_minutes while a game is running), but never while a video or game keeps the screen awake, a fullscreen app is up, or the PC is locked. Any input ends it. Pictures: game-art\\store\\<game>\\*.jpg (poster.jpg is used on the portrait Onn). Changes apply within a few seconds.",
+  "enabled": true,
+  "idle_minutes": 10,
+  "slide_seconds": 20,
+  "game_idle_minutes": 30
+}

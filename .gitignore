@@ -1,0 +1,13 @@
+knomi.json
+ktouch.json
+remote.json
+*.log
+cache/
+game-art/
+backgrounds/
+stream-screens/
+*-backup/
+ktouch-fw/.pio/
+ktouch-fw/src/app/ktouch_token.h
+__pycache__/
+*.pyc

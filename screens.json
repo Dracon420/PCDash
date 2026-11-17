@@ -1,0 +1,36 @@
+{
+  "_comment": "Programs that should open on the MAIN screen instead of the Onn. PCDash moves each new window of these once, when it appears; drag it back and it stays. Match by exe name, or by a piece of the program's folder path. Edit, then Quit + reopen PCDash from the tray.",
+  "enabled": true,
+  "main_screen": {
+    "exe": [
+      "bambu-studio.exe",
+      "elegoo-slicer.exe",
+      "Fusion360.exe",
+      "OrcaSlicer.exe",
+      "PrusaSlicer.exe",
+      "Cura.exe"
+    ],
+    "path_contains": [
+      "\\XboxGames\\",
+      "\\steamapps\\common\\",
+      "\\Epic Games\\"
+    ],
+    "except_path_contains": [
+      "\\Minecraft Launcher\\",
+      "\\GameSave\\"
+    ]
+  },
+  "game_screen": "tv",
+  "_games_borderless": "true: a game that opens as a normal window (title bar + taskbar) is made borderless fullscreen. false to turn off.",
+  "games_borderless": true,
+  "assign": {
+    "bambu": "samsung",
+    "palworld": "samsung",
+    "ark": "tv",
+    "minecraft": "tv",
+    "minecraftjava": "tv",
+    "oncehuman": "tv",
+    "subnautica2": "tv",
+    "halo": "tv"
+  }
+}

@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0e14; --card: #141924; --card2: #1a2030; --line: #252c3d;
+    --text: #e6e9ef; --dim: #8a93a6; --faint: #5a6377;
+    --down: #4cc2ff; --up: #b38cff; --ok: #3ddc84; --warn: #ffb547; --bad: #ff5c6c;
+    --accent: #4cc2ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  body { padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100vh; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+  .dim { color: var(--dim); } .faint { color: var(--faint); }
+  .hidden { display: none !important; }
+
+  /* header */
+  header { display: flex; align-items: flex-end; justify-content: space-between; padding: 2px 4px 0; flex: none; }
+  #clock { font-size: 68px; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+  #clock .sec { font-size: 28px; color: var(--dim); font-weight: 500; margin-left: 4px; }
+  #date { font-size: 20px; color: var(--dim); margin-top: 4px; }
+  .hostbox { text-align: right; font-size: 14px; color: var(--dim); line-height: 1.5; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .hostbox b { color: var(--text); font-weight: 600; }
+  .mode { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .mode button { border: 0; background: transparent; padding: 6px 14px; border-radius: 7px; font-size: 13px; }
+  .mode button.active { background: var(--accent); color: #04121c; }
+  body.glance #clock { font-size: 104px; }
+  body.glance #clock .sec { font-size: 40px; }
+  body.glance #date { font-size: 26px; }
+
+  canvas { width: 100%; display: block; }
+
+  /* ===== DETAIL VIEW ===== */
+  #detail { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+  .net { display: grid; grid-template-columns: 200px 200px 1fr; gap: 14px; align-items: center; }
+  .rate { font-size: 34px; font-weight: 600; line-height: 1.05; }
+  .rate small { font-size: 15px; color: var(--dim); font-weight: 500; }
+  .arrow-d { color: var(--down); } .arrow-u { color: var(--up); }
+  #netc { height: 74px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .big { font-size: 34px; font-weight: 600; line-height: 1.1; }
+  .big small { font-size: 15px; color: var(--dim); font-weight: 500; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 6px 0 8px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+  .kv span:nth-child(odd) { color: var(--dim); }
+  .kv span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; }
+  .cores { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; height: 34px; align-items: end; margin-top: 6px; }
+  .cores i { display: block; background: var(--accent); border-radius: 2px; min-height: 2px; transition: height .4s; opacity: .85; }
+  .sub { height: 34px !important; margin-top: 6px; }
+
+  /* servers + controls: a normal row in Detail, a pop-over drawer in Glance */
+  .lower { display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; min-height: 0; flex: 1; }
+  .servers { display: flex; flex-direction: column; min-height: 0; }
+  #srvlist { overflow-y: auto; margin-top: 6px; flex: 1; }
+  .srv { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center;
+    padding: 5px 4px; border-bottom: 1px solid var(--line); }
+  .srv:last-child { border-bottom: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.maint { background: #6b8bb5; }  /* paused on purpose - not a warning */
+  .sname { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .smeta { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sbtns { display: flex; gap: 5px; align-items: center; }
+
+  button { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+  button.confirm { background: var(--bad); border-color: var(--bad); color: #fff; }
+  button.go { background: #12324a; border-color: #1f5a82; }
+
+  .controls { display: flex; flex-direction: column; gap: 10px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; margin-top: 6px; }
+  .seg button { border: 0; background: transparent; padding: 8px 4px; }
+  .seg button.active { background: var(--accent); color: #04121c; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .toggle { width: 52px; height: 28px; border-radius: 14px; background: var(--line); position: relative; border: 0; padding: 0; flex: none; }
+  .toggle::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .toggle.on { background: var(--ok); } .toggle.on::after { left: 27px; }
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .presets button { padding: 10px 6px; font-size: 14px; }
+  .launch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+  .launch button { padding: 9px 4px; font-size: 12.5px; }
+  .warnline { color: var(--warn); font-size: 12px; margin-top: 4px; min-height: 16px; }
+  .drawer-close { display: none; }
+
+  .disks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; flex: none; }
+  .disk { font-size: 12px; }
+  .disk b { font-size: 14px; }
+  .disk .bar { margin: 4px 0 0; height: 5px; }
+
+  /* ===== GLANCE VIEW (readable from the couch) ===== */
+  #glance { display: none; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+  body.glance #glance { display: flex; }
+  body.glance #detail .netcard, body.glance #detail .tiles { display: none; }
+  body.glance #detail { flex: 0; }
+  .gauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; min-height: 0; }
+  .gauge { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 6px 8px; }
+  .gauge svg { width: 100%; max-width: 250px; height: auto; overflow: visible; }
+  .gauge .gv { font-size: 54px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+  .gauge .gu { font-size: 22px; fill: var(--dim); font-weight: 600; }
+  .gauge .gname { font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-top: -6px; }
+  .gauge .gsub { font-size: 17px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .gtrack { stroke: rgba(120,140,255,0.13); }
+  .garc { transition: stroke-dashoffset .6s ease, stroke .4s; }
+  .gnet { display: grid; grid-template-columns: auto auto 1fr; gap: 28px; align-items: center; padding: 14px 20px; flex: none; }
+  .gnet .rate { font-size: 64px; font-weight: 700; line-height: 1; }
+  .gnet .rate small { font-size: 22px; }
+  .gnet .label { font-size: 16px; }
+  #gnetc { height: 100px; }
+  .pills { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: none; }
+  .pill { display: flex; align-items: center; gap: 14px; padding: 16px 18px; font-size: 20px; text-align: left; border-radius: 12px; background: var(--card); }
+  .pill .ptitle { font-weight: 700; }
+  .pill .psub { font-size: 15px; color: var(--dim); font-weight: 500; }
+  .pill .chev { margin-left: auto; color: var(--dim); font-size: 22px; }
+  .bigdot { width: 16px; height: 16px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); flex: none; }
+  .bigdot.warn { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+  .bigdot.off { background: var(--faint); box-shadow: none; }
+
+  /* drawer: the shared servers/controls block, popped over the gauges */
+  body.glance .lower { display: none; }
+  body.glance .lower.open { display: grid; position: fixed; left: 12px; right: 12px; top: 150px; bottom: 12px; z-index: 10;
+    background: rgba(11,14,20,.97); padding: 12px; border: 1px solid var(--accent); border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6); grid-template-rows: auto 1fr; }
+  body.glance .lower.open .drawer-close { display: flex; grid-column: 1 / -1; }
+  body.glance .lower.open.only-servers { grid-template-columns: 1fr; }
+  body.glance .lower.open.only-servers .controls { display: none; }
+  body.glance .lower.open.only-controls { grid-template-columns: 1fr; }
+  body.glance .lower.open.only-controls .servers { display: none; }
+  body.glance .lower.open .sname { font-size: 18px; }
+  body.glance .lower.open .smeta { font-size: 14px; }
+  body.glance .lower.open .srv { padding: 9px 4px; }
+  body.glance .lower.open button { font-size: 15px; padding: 9px 14px; }
+
+  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--card2);
+    border: 1px solid var(--accent); border-radius: 10px; padding: 10px 16px; font-size: 14px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; max-width: 90%; z-index: 20; }
+  #toast.show { opacity: 1; }
+  .devwarn { color: #fff; background: rgba(255, 42, 109, .18); border: 1px solid var(--hot, #ff2a6d);
+    padding: 3px 10px; font-size: 14px; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px;
+    animation: devPulse 1.6s ease-in-out infinite; }
+  @keyframes devPulse { 50% { background: rgba(255, 42, 109, .45); } }
+</style>
+<link rel="stylesheet" href="/static/theme.css">
+</head>
+<body>
+  <header>
+    <div>
+      <div id="clock" class="num">--:--</div>
+      <div id="date">&nbsp;</div>
+    </div>
+    <div class="hostbox">
+      <div class="mode" id="mode">
+        <button data-mode="glance">Glance</button>
+        <button data-mode="detail">Detail</button>
+      </div>
+      <div class="devwarn" id="devwarn" style="display:none"></div>
+      <div><b>HOME-SERVER-1</b> &middot; up <span id="uptime" class="num">-</span></div>
+    </div>
+  </header>
+
+  <!-- ===== GLANCE ===== -->
+  <section id="glance">
+    <div class="gauges">
+      <div class="card gauge" id="g-cpu"></div>
+      <div class="card gauge" id="g-gpu"></div>
+      <div class="card gauge" id="g-temp"></div>
+      <div class="card gauge" id="g-ram"></div>
+    </div>
+    <div class="card gnet">
+      <div>
+        <div class="label"><span class="arrow-d">&#9660;</span> Download</div>
+        <div class="rate num"><span id="gdown">-</span> <small>Mbps</small></div>
+      </div>
+      <div>
+        <div class="label"><span class="arrow-u">&#9650;</span> Upload</div>
+        <div class="rate num"><span id="gup">-</span> <small>Mbps</small></div>
+      </div>
+      <canvas id="gnetc"></canvas>
+    </div>
+    <div class="pills">
+      <button class="pill" id="pill-servers">
+        <span class="bigdot" id="srvdot"></span>
+        <span><div class="ptitle" id="srvsum">Game servers</div><div class="psub" id="srvsub">loading&hellip;</div></span>
+        <span class="chev">&#9662;</span>
+      </button>
+      <button class="pill" id="pill-power">
+        <span style="font-size:24px">&#9889;</span>
+        <span><div class="ptitle" id="pwrsum">Power</div><div class="psub" id="pwrsub">&nbsp;</div></span>
+        <span class="chev">&#9662;</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ===== DETAIL (and the shared servers/controls block) ===== -->
+  <section id="detail">
+    <section class="card net netcard">
+      <div>
+        <div class="label"><span class="arrow-d">&#9660;</span> Download</div>
+        <div class="rate num"><span id="down">-</span> <small>Mbps</small></div>
+        <div class="dim num" style="font-size:12px">peak <span id="downpk">-</span></div>
+      </div>
+      <div>
+        <div class="label"><span class="arrow-u">&#9650;</span> Upload</div>
+        <div class="rate num"><span id="up">-</span> <small>Mbps</small></div>
+        <div class="dim num" style="font-size:12px">of ~38 &middot; peak <span id="uppk">-</span></div>
+      </div>
+      <canvas id="netc"></canvas>
+    </section>
+
+    <section class="tiles">
+      <div class="card">
+        <div class="label">CPU &middot; Ryzen 5 2600</div>
+        <div class="big num"><span id="cpu">-</span><small>%</small> <small id="mhz"></small></div>
+        <div class="cores" id="cores"></div>
+        <canvas id="cpuc" class="sub"></canvas>
+      </div>
+      <div class="card">
+        <div class="label">Memory</div>
+        <div class="big num"><span id="memused">-</span><small> / <span id="memtot">-</span> GB</small></div>
+        <div class="bar"><i id="membar"></i></div>
+        <div class="kv">
+          <span>Committed</span><span id="commit">-</span>
+          <span>Free</span><span id="memfree">-</span>
+        </div>
+        <div class="kv" id="top" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <div class="label">GPU &middot; RTX 2060</div>
+        <div class="big num"><span id="gpu">-</span><small>%</small> <span id="gtemp" style="font-size:22px"></span></div>
+        <div class="bar"><i id="vrambar"></i></div>
+        <div class="kv">
+          <span>VRAM</span><span id="vram">-</span>
+          <span>Fan</span><span id="fan">-</span>
+          <span>Power</span><span id="pwr">-</span>
+          <span>Clock</span><span id="gclk">-</span>
+          <span>Encoder</span><span id="enc">-</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="lower" id="lower">
+      <div class="row drawer-close">
+        <div class="label" id="drawertitle" style="font-size:15px">&nbsp;</div>
+        <button id="closedrawer">&#10005; Close</button>
+      </div>
+      <div class="card servers">
+        <div class="row"><div class="label">Game servers</div><div class="faint" id="srvage" style="font-size:12px"></div></div>
+        <div id="srvlist"><div class="dim" style="padding:8px 4px">Loading from ArkPanel&hellip;</div></div>
+      </div>
+      <div class="card controls">
+        <div>
+          <div class="label">Power plan</div>
+          <div class="seg" id="plans">
+            <button data-plan="saver">Saver</button>
+            <button data-plan="balanced">Balanced</button>
+            <button data-plan="high">High</button>
+          </div>
+        </div>
+        <div class="row">
+          <div><div class="label">Game Mode</div><div class="faint" style="font-size:12px">Windows prioritises the game you're playing</div></div>
+          <button class="toggle" id="gm" aria-label="Game Mode"></button>
+        </div>
+        <div>
+          <div class="label">Presets</div>
+          <div class="presets">
+            <button class="go" id="pgame">&#127918; Gaming</button>
+            <button id="pnormal">&#127769; Normal</button>
+          </div>
+          <div class="warnline" id="ramwarn"></div>
+        </div>
+        <div>
+          <div class="label">Open</div>
+          <div class="launch">
+            <button data-launch="arkpanel">ArkPanel</button>
+            <button data-launch="sunshine">Sunshine</button>
+            <button data-launch="taskmgr">Task Mgr</button>
+            <button data-launch="gamebar">Game Bar</button>
+            <button data-launch="sound">Sound</button>
+            <button data-launch="display">Display</button>
+            <button id="openobs">OBS</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section class="card disks" id="disks"></section>
+  <div id="toast"></div>
+
+<script>
+const CSRF = "__CSRF__";
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const store = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 3500); }
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-PCDash": CSRF },
+    body: JSON.stringify(body || {}) });
+  // 403 = the background server restarted and issued a new token; reload to pick it up.
+  if (r.status === 403) { location.reload(); throw new Error("dashboard restarted - reloading"); }
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error((j.body && (j.body.message || j.body.error)) || j.error || ("HTTP " + r.status));
+  return j;
+}
+
+/* ---------- view mode ---------- */
+function setMode(m) {
+  document.body.classList.toggle("glance", m === "glance");
+  document.querySelectorAll("#mode button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  closeDrawer(); store.set("pcdash.mode", m); setTimeout(stats, 30);
+}
+document.querySelectorAll("#mode button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+
+/* ---------- drawer (Glance only) ---------- */
+let drawerTimer;
+function openDrawer(which) {
+  const l = $("lower");
+  l.classList.add("open"); l.classList.toggle("only-servers", which === "servers");
+  l.classList.toggle("only-controls", which === "controls");
+  $("drawertitle").textContent = which === "servers" ? "Game servers" : "Power & settings";
+  bumpDrawer();
+}
+function closeDrawer() { $("lower").classList.remove("open", "only-servers", "only-controls"); clearTimeout(drawerTimer); }
+function bumpDrawer() { clearTimeout(drawerTimer); drawerTimer = setTimeout(closeDrawer, 45000); } // tidy itself away
+$("pill-servers").onclick = () => openDrawer("servers");
+$("pill-power").onclick = () => openDrawer("controls");
+$("closedrawer").onclick = closeDrawer;
+$("lower").addEventListener("pointerdown", () => { if ($("lower").classList.contains("open")) bumpDrawer(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+/* ---------- clock ---------- */
+function tick() {
+  const d = new Date();
+  let h = d.getHours(), ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+  const mm = String(d.getMinutes()).padStart(2, "0"), ss = String(d.getSeconds()).padStart(2, "0");
+  $("clock").innerHTML = `${h}:${mm}<span class="sec">${ss} ${ap}</span>`;
+  $("date").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+setInterval(tick, 1000); tick();
+
+/* ---------- sparklines ---------- */
+function spark(canvas, series, opts = {}) {
+  if (!canvas.offsetParent) return;           // hidden in the current mode
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const c = canvas.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const n = opts.len || 90;
+  const max = opts.max || Math.max(1, ...series.flatMap(s => s.data)) * 1.15;
+  c.strokeStyle = "rgba(120,140,255,0.18)"; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, h - .5); c.lineTo(w, h - .5); c.stroke();
+  for (const s of series) {
+    const pts = s.data; if (!pts.length) continue;
+    const x = i => w - (pts.length - 1 - i) * (w / (n - 1)), y = v => h - 2 - (v / max) * (h - 4);
+    c.beginPath(); pts.forEach((v, i) => i ? c.lineTo(x(i), y(v)) : c.moveTo(x(i), y(v)));
+    c.strokeStyle = s.color; c.lineWidth = opts.lw || 2; c.lineJoin = "round";
+    c.shadowColor = s.color; c.shadowBlur = 10;            // neon glow
+    c.stroke(); c.shadowBlur = 0;
+    c.lineTo(x(pts.length - 1), h); c.lineTo(x(0), h); c.closePath();
+    const g = c.createLinearGradient(0, 0, 0, h);           // fill fades out downward
+    g.addColorStop(0, s.color + "55"); g.addColorStop(1, s.color + "00");
+    c.fillStyle = g; c.fill();
+  }
+}
+
+/* ---------- big arc gauges ---------- */
+// 270-degree arc, gap at the bottom. Colour steps at warn/bad thresholds.
+const R = 80, CIRC = 2 * Math.PI * R, ARC = CIRC * 0.75;
+function gaugeInit(id, name) {
+  $(id).innerHTML = `
+    <svg viewBox="0 0 200 175">
+      <defs>
+        <linearGradient id="${id}-grad" gradientUnits="userSpaceOnUse" x1="156.6" y1="156.6" x2="43.4" y2="43.4">
+          <stop offset="0" stop-color="#00f0ff"/><stop offset=".6" stop-color="#b14cff"/><stop offset="1" stop-color="#ff2a6d"/>
+        </linearGradient>
+        <filter id="${id}-glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(0,240,255,.35)" stroke-width="5"
+        stroke-dasharray="1.2 6.26" transform="rotate(135 100 100)" pathLength="565"/>
+      <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(252,238,10,.25)" stroke-width="1"
+        stroke-dasharray="3 5"/>
+      <circle class="gtrack" cx="100" cy="100" r="${R}" fill="none" stroke-width="16" stroke-linecap="round"
+        stroke-dasharray="${ARC} ${CIRC}" transform="rotate(135 100 100)"/>
+      <circle class="garc" cx="100" cy="100" r="${R}" fill="none" stroke-width="16" stroke-linecap="round"
+        stroke-dasharray="${ARC} ${CIRC}" stroke-dashoffset="${ARC}" transform="rotate(135 100 100)"
+        filter="url(#${id}-glow)"/>
+      <text class="gv" x="100" y="112" text-anchor="middle">-</text>
+      <text class="gu" x="100" y="142" text-anchor="middle"></text>
+    </svg>
+    <div class="gname">${name}</div><div class="gsub">&nbsp;</div>`;
+}
+function gaugeSet(id, value, { max = 100, unit = "%", warn = 75, bad = 90, sub = "", text } = {}) {
+  const el = $(id); if (!el.firstElementChild) return;
+  const arc = el.querySelector(".garc"), v = value == null ? 0 : Math.max(0, Math.min(max, value));
+  arc.style.strokeDashoffset = ARC * (1 - v / max);
+  arc.style.stroke = value == null ? css("--faint") : v >= bad ? css("--bad") : v >= warn ? css("--warn") : `url(#${id}-grad)`;
+  el.querySelector(".gv").textContent = text ?? (value == null ? "-" : Math.round(value));
+  el.querySelector(".gu").textContent = unit;
+  el.querySelector(".gsub").textContent = sub || " ";
+}
+gaugeInit("g-cpu", "CPU"); gaugeInit("g-gpu", "GPU"); gaugeInit("g-temp", "GPU Temp"); gaugeInit("g-ram", "Memory");
+
+/* ---------- stats ---------- */
+const fmt = (v, d = 1) => v == null ? "-" : Number(v).toFixed(d);
+const tempColor = t => t == null ? css("--dim") : t >= 83 ? css("--bad") : t >= 72 ? css("--warn") : css("--ok");
+function dur(s) { s = Math.floor(s); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`; }
+const rate = v => v == null ? "-" : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+let lastMem = null;
+
+async function stats() {
+  let s; try { s = await (await fetch("/api/stats")).json(); } catch (e) { return; }
+  const nic = s.net && s.net.ifaces && s.net.ifaces[s.net.nic] || {};
+  const netSeries = [{ data: s.hist.down, color: css("--down") }, { data: s.hist.up, color: css("--up") }];
+  const g = s.gpu, m = s.mem; lastMem = m;
+  $("uptime").textContent = dur(s.uptime);
+  const kt = (s.devices || {}).ktouch, dw = $("devwarn");
+  if (kt && kt.warn) { dw.style.display = "block"; dw.textContent = `⚠ K-TOUCH OFFLINE · ${dur(kt.offline_s)} — battery flat?`; }
+  else dw.style.display = "none";
+
+  // Glance
+  $("gdown").textContent = rate(nic.down_mbps); $("gup").textContent = rate(nic.up_mbps);
+  spark($("gnetc"), netSeries, { lw: 3 });
+  if (s.cpu && s.cpu.total != null)
+    gaugeSet("g-cpu", s.cpu.total, { sub: s.cpu.mhz ? (s.cpu.mhz / 1000).toFixed(2) + " GHz" : "" });
+  gaugeSet("g-gpu", g && g.util, { sub: g ? `VRAM ${fmt(g.mem_used / 1024)} / ${fmt(g.mem_total / 1024, 0)} GB` : "" });
+  gaugeSet("g-temp", g && g.temp, { max: 100, unit: "°C", warn: 72, bad: 83, sub: g && g.fan != null ? `fan ${g.fan.toFixed(0)}%` : "" });
+  gaugeSet("g-ram", m.percent, { warn: 80, bad: 92, sub: `${fmt(m.used_gb)} / ${fmt(m.total_gb, 0)} GB` });
+
+  // Detail
+  $("down").textContent = rate(nic.down_mbps); $("up").textContent = rate(nic.up_mbps);
+  $("downpk").textContent = rate(Math.max(0, ...s.hist.down)); $("uppk").textContent = rate(Math.max(0, ...s.hist.up));
+  spark($("netc"), netSeries);
+  if (s.cpu && s.cpu.per) {
+    $("cpu").textContent = fmt(s.cpu.total, 0);
+    $("mhz").textContent = s.cpu.mhz ? (s.cpu.mhz / 1000).toFixed(2) + " GHz" : "";
+    const cores = $("cores");
+    if (cores.children.length !== s.cpu.per.length) cores.innerHTML = s.cpu.per.map(() => "<i></i>").join("");
+    s.cpu.per.forEach((v, i) => { const el = cores.children[i]; el.style.height = Math.max(4, v) + "%";
+      el.style.background = v > 90 ? css("--warn") : css("--accent"); });
+    spark($("cpuc"), [{ data: s.hist.cpu, color: css("--accent") }], { max: 100 });
+  }
+  $("memused").textContent = fmt(m.used_gb); $("memtot").textContent = fmt(m.total_gb, 0);
+  $("membar").style.width = m.percent + "%";
+  $("membar").style.background = m.percent > 90 ? css("--bad") : m.percent > 75 ? css("--warn") : css("--accent");
+  $("commit").textContent = `${fmt(m.commit_gb)} / ${fmt(m.commit_limit_gb, 0)} GB`;
+  $("memfree").textContent = fmt(m.total_gb - m.used_gb) + " GB";
+  $("top").innerHTML = s.top.slice(0, 3).map(p =>
+    `<span class="faint">${p.name.replace(/\.exe$/i, "")}${p.count > 1 ? " ×" + p.count : ""}</span><span class="faint">${fmt(p.gb, 2)} GB</span>`).join("");
+  if (g) {
+    $("gpu").textContent = fmt(g.util, 0);
+    $("gtemp").textContent = g.temp != null ? g.temp.toFixed(0) + "°C" : ""; $("gtemp").style.color = tempColor(g.temp);
+    $("vram").textContent = `${fmt(g.mem_used / 1024)} / ${fmt(g.mem_total / 1024, 0)} GB`;
+    $("vrambar").style.width = (g.mem_used / g.mem_total * 100) + "%";
+    $("fan").textContent = g.fan != null ? g.fan.toFixed(0) + "%" : "-";
+    $("pwr").textContent = g.power != null ? `${g.power.toFixed(0)} / ${fmt(g.power_limit, 0)} W` : "-";
+    $("gclk").textContent = g.clock != null ? g.clock.toFixed(0) + " MHz" : "-";
+    $("enc").textContent = g.encoder != null ? g.encoder.toFixed(0) + "%" + (g.encoder > 0 ? " (streaming)" : "") : "-";
+  }
+
+  $("disks").innerHTML = s.disks.map(d => {
+    const col = d.percent > 90 ? css("--bad") : d.percent > 80 ? css("--warn") : css("--accent");
+    return `<div class="disk"><div class="row"><b>${d.drive}</b><span class="dim num">${d.free_gb >= 1000 ? (d.free_gb / 1024).toFixed(1) + " TB" : d.free_gb.toFixed(0) + " GB"} free</span></div>
+      <div class="bar"><i style="width:${d.percent}%;background:${col}"></i></div></div>`; }).join("");
+  ramHint();
+}
+setInterval(stats, 1000);
+window.addEventListener("resize", stats);
+
+/* ---------- servers ---------- */
+const pending = {};
+function srvRow(s) {
+  const dotc = s.running ? "on" : (s.state === "maintenance" ? "maint" : "");
+  const bits = [s.game, s.host === "HOME-SERVER-1" ? "this PC" : s.host];
+  if (s.running) { bits.push(dur(s.uptime)); if (s.mem_gb) bits.push(fmt(s.mem_gb) + " GB"); }
+  else if (s.note) bits.push(s.note); else bits.push("stopped");
+  const pl = s.running && s.players != null
+    ? `<span class="num" title="${(s.player_names || []).join(", ")}" style="font-size:13px;color:${s.players ? css("--ok") : css("--dim")}">${s.players} on</span>` : "";
+  const p = pending[s.id];
+  const btn = (action, label) => {
+    const armed = p && p.armed === action;
+    return `<button data-id="${s.id}" data-act="${action}" class="${armed ? "confirm" : ""}" ${p && p.busy ? "disabled" : ""}>${armed ? "Sure?" : label}</button>`; };
+  const btns = s.running ? btn("restart", "Restart") + btn("stop", "Stop") : btn("start", "Start");
+  return `<div class="srv"><span class="dot ${dotc}"></span>
+    <div style="min-width:0"><div class="sname">${s.name}</div><div class="smeta">${bits.join(" · ")}</div></div>
+    <div class="sbtns">${pl}${btns}</div></div>`;
+}
+let lastServers = [];
+async function servers() {
+  let j; try { j = await (await fetch("/api/servers")).json(); } catch (e) { return; }
+  if (j.error && !j.servers) {
+    $("srvlist").innerHTML = `<div style="color:var(--warn);padding:8px 4px">${j.error}</div>`;
+    $("srvsum").textContent = "Game servers"; $("srvsub").textContent = j.error; $("srvdot").className = "bigdot warn";
+    return;
+  }
+  if (!j.servers) return;
+  lastServers = j.servers;
+  const order = s => (s.running ? 0 : 1);
+  $("srvlist").innerHTML = j.servers.slice().sort((a, b) => order(a) - order(b)).map(srvRow).join("");
+  $("srvage").textContent = j.error ? j.error : (j.at ? "updated " + Math.max(0, Math.round(Date.now() / 1000 - j.at)) + "s ago" : "");
+  // Glance summary pill
+  const up = j.servers.filter(s => s.running).length, total = j.servers.length;
+  const players = j.servers.reduce((a, s) => a + (s.running && s.players ? s.players : 0), 0);
+  $("srvsum").textContent = `${up} of ${total} servers up`;
+  $("srvsub").textContent = players ? `${players} player${players > 1 ? "s" : ""} online` : "nobody online";
+  $("srvdot").className = "bigdot" + (j.error ? " warn" : up === 0 ? " off" : "");
+}
+setInterval(servers, 3000); servers();
+
+$("srvlist").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const id = b.dataset.id, act = b.dataset.act, s = lastServers.find(x => x.id === id);
+  const p = pending[id];
+  if (!p || p.armed !== act) {             // first click arms, second click fires
+    pending[id] = { armed: act }; servers();
+    setTimeout(() => { if (pending[id] && pending[id].armed === act && !pending[id].busy) { delete pending[id]; servers(); } }, 4000);
+    return;
+  }
+  pending[id] = { busy: true }; servers();
+  try { await post(`/api/servers/${encodeURIComponent(id)}/${act}`);
+    toast(`${act[0].toUpperCase() + act.slice(1)} sent to ${s ? s.name : id}. It can take a minute or two.`);
+  } catch (err) { toast(`Couldn't ${act} ${s ? s.name : id}: ${err.message}`); }
+  setTimeout(() => { delete pending[id]; servers(); }, 5000);
+});
+
+/* ---------- settings ---------- */
+let settings = {};
+const PLAN_NAMES = { saver: "Power saver", balanced: "Balanced", high: "High performance" };
+function drawSettings() {
+  document.querySelectorAll("#plans button").forEach(b => b.classList.toggle("active", b.dataset.plan === settings.plan));
+  $("gm").classList.toggle("on", !!settings.game_mode);
+  $("pwrsum").textContent = PLAN_NAMES[settings.plan] || "Custom plan";
+  $("pwrsub").textContent = "Game Mode " + (settings.game_mode ? "on" : "off");
+}
+async function loadSettings() { try { settings = await (await fetch("/api/settings")).json(); drawSettings(); } catch (e) {} }
+async function setSettings(body, msg) {
+  try { settings = await post("/api/settings", body); drawSettings(); if (msg) toast(msg); }
+  catch (e) { toast("Couldn't change that: " + e.message); }
+}
+document.querySelectorAll("#plans button").forEach(b => b.onclick = () =>
+  setSettings({ plan: b.dataset.plan }, "Power plan: " + b.textContent));
+$("gm").onclick = () => setSettings({ game_mode: !settings.game_mode }, "Game Mode " + (!settings.game_mode ? "on" : "off"));
+$("pgame").onclick = () => setSettings({ plan: "high", game_mode: true }, "Gaming: High performance + Game Mode on");
+$("pnormal").onclick = () => setSettings({ plan: "balanced" }, "Normal: Balanced power plan");
+document.querySelectorAll("[data-launch]").forEach(b => b.onclick = () =>
+  post("/api/launch/" + b.dataset.launch).catch(e => toast(e.message)));
+$("openobs").onclick = () => post("/api/obs/launch").then(() => toast("Opening OBS…")).catch(e => toast(e.message));
+setInterval(loadSettings, 15000); loadSettings();
+
+function ramHint() {
+  if (!lastMem) return;
+  const free = lastMem.total_gb - lastMem.used_gb;
+  const local = lastServers.filter(s => s.running && s.host === "HOME-SERVER-1" && s.mem_gb > 4);
+  $("ramwarn").textContent = free < 6
+    ? `Only ${free.toFixed(1)} GB free${local.length ? " — " + local.map(s => s.name).join(", ") + " is using a lot" : ""}. Heavy games may stutter.`
+    : "";
+}
+
+setMode(store.get("pcdash.mode", "glance"));
+</script>
+</body>
+</html>

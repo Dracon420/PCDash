@@ -1,0 +1,11 @@
+flask
+waitress
+requests
+psutil
+Pillow
+wsproto
+pyserial
+# optional, only for hbb-keycaps/ (3D-printed keycaps):
+# numpy
+# shapely
+# manifold3d

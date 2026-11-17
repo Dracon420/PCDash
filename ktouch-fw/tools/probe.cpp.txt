@@ -1,0 +1,44 @@
+// Hardware probe (2026-11-11): find how the K-Touch reports its battery.
+// No public pin map covers the battery, so this READS (never drives):
+//   - an I2C scan of the touch bus (SDA2/SCL1) and the expansion bus (SDA4/SCL3),
+//     looking for a charger / fuel-gauge chip;
+//   - millivolts on the free ADC pins 3, 4 (ADC1) and 19, 20 (ADC2);
+//   - logic levels on the free pins 0, 3, 4, 19, 20, 42, 45 (charge-status lines).
+// Result is shown at GET /info as "probe".
+#include "app.h"
+#include <Wire.h>
+
+static String boot_scan;
+static char live[256];
+
+static String scan(TwoWire &w) {
+    String s;
+    for (uint8_t a = 1; a < 127; a++) {
+        w.beginTransmission(a);
+        if (w.endTransmission() == 0) { char b[8]; snprintf(b, sizeof b, "%02X ", a); s += b; }
+    }
+    return s.length() ? s : String("none");
+}
+
+void probe_boot() {
+    boot_scan = "bus0[" + scan(Wire) + "]";
+    Wire1.begin(4, 3, 100000);
+    boot_scan += " bus1[" + scan(Wire1) + "]";
+    Wire1.end();
+    for (int p : {0, 3, 4, 19, 20, 42, 45}) pinMode(p, INPUT);
+}
+
+void probe_tick() {
+    static uint32_t last;
+    if (millis() - last < 1000) return;
+    last = millis();
+    int d[7]; const int pins[7] = {0, 3, 4, 19, 20, 42, 45};
+    for (int i = 0; i < 7; i++) d[i] = digitalRead(pins[i]);
+    snprintf(live, sizeof live,
+             "%s | mV g3=%u g4=%u g19=%u g20=%u | lvl g0=%d g3=%d g4=%d g19=%d g20=%d g42=%d g45=%d",
+             boot_scan.c_str(), analogReadMilliVolts(3), analogReadMilliVolts(4),
+             analogReadMilliVolts(19), analogReadMilliVolts(20),
+             d[0], d[1], d[2], d[3], d[4], d[5], d[6]);
+}
+
+const char *probe_text() { return live; }

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stream Control</title>
+<style>
+  :root {
+    --bg: #0b0e14; --card: #141924; --card2: #1a2030; --line: #252c3d;
+    --text: #e6e9ef; --dim: #8a93a6; --faint: #5a6377;
+    --ok: #3ddc84; --warn: #ffb547; --bad: #ff5c6c; --live: #ff3b55; --accent: #4cc2ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  body { padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100vh; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+  .row { display: flex; align-items: center; gap: 8px; }
+
+  header { display: flex; align-items: center; gap: 10px; flex: none; }
+  .badge { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 10px; background: var(--card);
+    border: 1px solid var(--line); font-weight: 700; font-size: 18px; }
+  .badge .d { width: 12px; height: 12px; border-radius: 50%; background: var(--faint); }
+  .badge.live { background: var(--live); border-color: var(--live); color: #fff; }
+  .badge.live .d { background: #fff; animation: pulse 1.2s infinite; }
+  .badge.rec { border-color: var(--bad); color: var(--bad); }
+  .badge.rec .d { background: var(--bad); animation: pulse 1.2s infinite; }
+  .badge.paused { border-color: var(--warn); color: var(--warn); }
+  .badge.paused .d { background: var(--warn); }
+  .badge.rb { font-size: 14px; color: var(--ok); border-color: #1f5a3a; }
+  .badge.rb .d { background: var(--ok); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .meta { margin-left: auto; text-align: right; font-size: 13px; color: var(--dim); line-height: 1.4; }
+
+  .preview { flex: 1; min-height: 0; position: relative; border-radius: 12px; overflow: hidden; background: #000;
+    border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .preview.live { border-color: var(--live); box-shadow: 0 0 0 2px var(--live) inset; }
+  .ovl { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; background: rgba(11,14,20,.92); text-align: center; padding: 24px; font-size: 17px; }
+  .ovl h2 { margin: 0; font-size: 24px; }
+  .ovl ol { text-align: left; color: var(--dim); line-height: 1.6; margin: 0; }
+  .scenetag { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.65); padding: 4px 10px; border-radius: 6px; font-size: 13px; }
+
+  button { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 14px; cursor: pointer; font-size: 15px; font-weight: 600; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; border-color: var(--line); }
+  button.confirm { background: var(--bad) !important; border-color: var(--bad) !important; color: #fff; }
+
+  .main { display: grid; grid-template-columns: 1.4fr 1.1fr .8fr 1fr 1fr; gap: 8px; flex: none; }
+  .main button { padding: 14px 8px; font-size: 17px; }
+  #golive { background: #3a1018; border-color: #7a2030; }
+  #golive.on { background: var(--live); border-color: var(--live); color: #fff; }
+  #rec.on { background: #3a1018; border-color: var(--bad); color: var(--bad); }
+
+  .strip { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; flex: none; align-items: center; }
+  .strip .label { flex: none; width: 62px; }
+  .chip { flex: none; padding: 8px 14px; font-size: 14px; }
+  .chip.active { background: var(--accent); color: #04121c; border-color: var(--accent); }
+  .chip.muted { color: var(--bad); border-color: #5a2030; text-decoration: line-through; }
+  .chip.hiddenitem { color: var(--faint); }
+
+  .health { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; flex: none; }
+  .h { padding: 8px 12px; }
+  .h .v { font-size: 22px; font-weight: 700; }
+  .h .v small { font-size: 13px; color: var(--dim); font-weight: 500; }
+  .warnline { color: var(--warn); font-size: 13px; min-height: 0; flex: none; }
+  .warnline:empty { display: none; }
+
+  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--card2);
+    border: 1px solid var(--accent); border-radius: 10px; padding: 10px 16px; font-size: 14px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; z-index: 20; max-width: 90%; }
+  #toast.show { opacity: 1; }
+</style>
+<link rel="stylesheet" href="/static/theme.css">
+</head>
+<body>
+  <header>
+    <div class="badge" id="b-live"><span class="d"></span><span id="t-live">OFFLINE</span></div>
+    <div class="badge" id="b-rec"><span class="d"></span><span id="t-rec">NOT RECORDING</span></div>
+    <div class="badge rb hidden" id="b-rb" style="display:none"><span class="d"></span>Clips ready</div>
+    <div class="meta"><div><b style="color:var(--text)">Stream Control</b></div><div id="obsmeta">&nbsp;</div></div>
+  </header>
+
+  <div class="preview" id="preview">
+    <img id="img" alt="">
+    <div class="scenetag" id="scenetag" style="display:none"></div>
+    <div class="ovl" id="ovl"><h2>Connecting to OBS&hellip;</h2></div>
+  </div>
+
+  <div class="main">
+    <button id="golive">&#128308; Go Live</button>
+    <button id="rec">&#9210; Record</button>
+    <button id="pause" disabled>&#9208; Pause</button>
+    <button id="clip" title="Saves the last few seconds as a clip (OBS Replay Buffer)">&#9986; Save Clip</button>
+    <button id="folder">&#128193; Recordings</button>
+  </div>
+
+  <div class="card strip" id="scenes"><span class="label">Scenes</span></div>
+  <div class="card strip" id="toggles"><span class="label">Sources</span></div>
+
+  <div class="health">
+    <div class="card h"><div class="label">Stream bitrate</div><div class="v num" id="h-br">-</div></div>
+    <div class="card h"><div class="label">Dropped frames</div><div class="v num" id="h-drop">-</div></div>
+    <div class="card h"><div class="label">Upload used</div><div class="v num" id="h-up">-</div></div>
+    <div class="card h"><div class="label">OBS FPS</div><div class="v num" id="h-fps">-</div></div>
+    <div class="card h"><div class="label">OBS CPU</div><div class="v num" id="h-cpu">-</div></div>
+  </div>
+  <div class="warnline" id="warn"></div>
+  <div id="toast"></div>
+
+<script>
+const CSRF = "__CSRF__";
+const UPLOAD_LIMIT = 38;   // measured 2026-11-08, Mbps
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 3500); }
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-PCDash": CSRF },
+    body: JSON.stringify(body || {}) });
+  if (r.status === 403) { location.reload(); throw new Error("reloading"); }
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+const act = (a, body) => post("/api/obs/" + a, body);
+const tc = t => (t || "00:00:00").split(".")[0];
+
+/* two-click confirm for the buttons that put you on air or take you off it */
+const armed = {};
+function needsConfirm(btn, key, label) {
+  if (armed[key]) { clearTimeout(armed[key]); delete armed[key]; btn.classList.remove("confirm"); return false; }
+  btn.classList.add("confirm"); btn.dataset.label = btn.textContent; btn.textContent = label;
+  armed[key] = setTimeout(() => { delete armed[key]; btn.classList.remove("confirm"); draw(); }, 4000);
+  return true;
+}
+
+let S = { connected: false };
+/* Only touch the DOM when something changed. Rebuilding the chips every second
+   threw away a button between press and release, so clicks were lost. */
+function setHTML(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
+function draw() {
+  const c = S.connected;
+  const st = S.stream || {}, rec = S.record || {}, rb = S.replay || {};
+  ["golive", "rec", "pause", "clip", "folder"].forEach(id => $(id).disabled = !c);
+
+  // badges
+  $("b-live").className = "badge" + (st.active ? " live" : "");
+  $("t-live").textContent = st.active ? (st.reconnecting ? "RECONNECTING" : "LIVE " + tc(st.timecode)) : "OFFLINE";
+  $("b-rec").className = "badge" + (rec.active ? (rec.paused ? " paused" : " rec") : "");
+  $("t-rec").textContent = rec.active ? (rec.paused ? "PAUSED " : "REC ") + tc(rec.timecode) : "NOT RECORDING";
+  $("b-rb").style.display = rb.active ? "flex" : "none";
+  $("preview").classList.toggle("live", !!st.active);
+
+  // main buttons (skip any that are mid-confirm)
+  if (!armed.live) { $("golive").textContent = st.active ? "■ End Stream" : "🔴 Go Live"; $("golive").classList.toggle("on", !!st.active); }
+  if (!armed.rec) { $("rec").textContent = rec.active ? "■ Stop Rec" : "⏺ Record"; $("rec").classList.toggle("on", !!rec.active); }
+  $("pause").disabled = !c || !rec.active;
+  $("pause").textContent = rec.paused ? "▶ Resume" : "⏸ Pause";
+  $("clip").textContent = rb.active ? "✂ Save Clip" : "✂ Start Clips";
+  $("clip").disabled = !c || !rb.available;
+  $("clip").title = rb.available ? "Keeps the last few seconds ready to save as a clip"
+    : "Turn on Replay Buffer in OBS: Settings → Output";
+
+  // overlay
+  const ovl = $("ovl");
+  if (!c) {
+    ovl.style.display = "flex";
+    if (S.reason === "obs_closed") ovl.innerHTML = `<h2>OBS isn't open</h2><button id="openobs">Open OBS</button>`;
+    else if (S.reason === "websocket_off") ovl.innerHTML = `<h2>Turn on OBS remote control</h2>
+      <ol><li>In OBS: <b>Tools → WebSocket Server Settings</b></li><li>Tick <b>Enable WebSocket server</b></li>
+      <li>Leave <b>Enable Authentication</b> on, and press <b>OK</b></li></ol>
+      <div style="color:var(--dim);font-size:14px">This page connects by itself within a few seconds.</div>`;
+    else if (/auth/i.test(S.reason || "")) ovl.innerHTML = `<h2>OBS refused the password</h2>
+      <div style="color:var(--dim)">Re-open <b>Tools → WebSocket Server Settings</b>, press <b>OK</b> to save it, then wait a few seconds.</div>`;
+    else ovl.innerHTML = `<h2>Connecting to OBS&hellip;</h2><div style="color:var(--dim);font-size:14px">${S.reason || ""}</div>`;
+    const b = $("openobs"); if (b) b.onclick = () => post("/api/obs/launch").then(() => toast("Opening OBS…")).catch(e => toast(e.message));
+    $("scenetag").style.display = "none";
+  } else { ovl.style.display = "none"; $("scenetag").style.display = "block"; $("scenetag").textContent = S.scene || ""; }
+
+  // scenes
+  const sc = $("scenes"), scenes = S.scenes || [];
+  setHTML(sc, `<span class="label">Scenes</span>` + (c ? scenes.map(n =>
+    `<button class="chip ${n === S.scene ? "active" : ""}" data-scene="${encodeURIComponent(n)}">${n}</button>`).join("") : ""));
+
+  // audio + sources
+  const tg = $("toggles");
+  // Mute chips only for real audio devices (desktop sound, mic). A webcam has a
+  // mute state too, but what you want for it is the show/hide chip below.
+  const audio = (S.audio || []).filter(a => /wasapi|audio/i.test(a.kind || "")).map(a =>
+    `<button class="chip ${a.muted ? "muted" : ""}" data-mute="${encodeURIComponent(a.name)}">${a.muted ? "🔇" : "🔊"} ${a.name}</button>`);
+  const items = (S.items || []).map(i =>
+    `<button class="chip ${i.enabled ? "" : "hiddenitem"}" data-item="${i.id}" data-en="${i.enabled}">${i.enabled ? "👁" : "🚫"} ${i.name}</button>`);
+  setHTML(tg, `<span class="label">Sources</span>` + (c ? audio.concat(items).join("") : ""));
+
+  // health
+  const s = S.stats || {};
+  $("h-br").innerHTML = st.active && st.mbps != null ? `${st.mbps.toFixed(1)} <small>Mbps</small>` : "-";
+  const drop = st.total ? st.skipped / st.total * 100 : null;
+  $("h-drop").innerHTML = st.active && drop != null ? `${drop.toFixed(1)}<small>%</small>` : "-";
+  $("h-drop").style.color = drop > 5 ? css("--bad") : drop > 1 ? css("--warn") : "";
+  const up = S.upload_mbps;
+  $("h-up").innerHTML = up != null ? `${up.toFixed(1)} <small>/ ${UPLOAD_LIMIT}</small>` : "-";
+  $("h-up").style.color = up > UPLOAD_LIMIT * .85 ? css("--bad") : up > UPLOAD_LIMIT * .65 ? css("--warn") : "";
+  $("h-fps").textContent = c && s.fps != null ? s.fps.toFixed(0) : "-";
+  $("h-cpu").innerHTML = c && s.cpu != null ? `${s.cpu.toFixed(0)}<small>%</small>` : "-";
+  $("obsmeta").textContent = c ? `frame ${s.frame_ms != null ? s.frame_ms.toFixed(1) : "-"} ms · render lag ${s.render_total ? (s.render_skipped / s.render_total * 100).toFixed(1) : "0"}%` : "OBS not connected";
+
+  let w = "";
+  if (st.active && up > UPLOAD_LIMIT * .85) w = "Upload is nearly full — your stream and your game servers are competing. Lower the bitrate or expect drops.";
+  else if (st.active && drop > 5) w = "Lots of dropped frames — the connection can't keep up. Try a lower bitrate in OBS (Settings → Output).";
+  else if (st.congestion > .5) w = "Network congestion on the stream.";
+  $("warn").textContent = w;
+}
+
+async function poll() {
+  try { S = await (await fetch("/api/obs/status")).json(); } catch (e) { S = { connected: false, reason: "dashboard not answering" }; }
+  draw();
+}
+setInterval(poll, 1000); poll();
+
+/* Live preview. ~15 fps (10 while live), paused when this window is hidden.
+   It was ~3 fps, which made the webcam look jumpy here though it was smooth in
+   OBS (2026-11-11). Measured: 15 fps of 1024 px screenshots cost OBS 0 skipped
+   frames, ~10 ms each. Frames are fetched back-to-back (never overlapping) and
+   decoded BEFORE being swapped in, so the picture never flashes blank. */
+const PREVIEW_MS = () => (S.stream && S.stream.active) ? 100 : 66;
+async function frame() {
+  if (!S.connected || document.hidden) return false;
+  // Ask OBS for exactly as many pixels as the preview shows (sharp, no upscaling).
+  const box = $("preview"), dpr = window.devicePixelRatio || 1;
+  const w = Math.min(1920, Math.max(640, Math.round(Math.min(box.clientWidth, box.clientHeight * 16 / 9) * dpr / 64) * 64));
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 3000);
+  try {
+    const r = await fetch(`/api/obs/preview.jpg?w=${w}&q=85`, { signal: ctl.signal });
+    if (r.status !== 200) return false;
+    const url = URL.createObjectURL(await r.blob());
+    const next = new Image();
+    next.src = url;
+    await next.decode();                       // ready before it is shown
+    const img = $("img"), old = img.src;
+    img.src = url;
+    if (old.startsWith("blob:")) setTimeout(() => URL.revokeObjectURL(old), 1000);
+    return true;
+  } catch (e) { return false; } finally { clearTimeout(t); }
+}
+(async function previewLoop() {
+  for (;;) {
+    const t0 = performance.now();
+    const ok = await frame();
+    const wait = ok ? PREVIEW_MS() - (performance.now() - t0) : 500;   // idle/hidden/offline: check twice a second
+    await new Promise(r => setTimeout(r, Math.max(0, wait)));
+  }
+})();
+
+/* buttons */
+$("golive").onclick = async () => {
+  const live = S.stream && S.stream.active;
+  if (needsConfirm($("golive"), "live", live ? "End stream? Click again" : "Go live? Click again")) return;
+  try { await act(live ? "stream_stop" : "stream_start"); toast(live ? "Ending stream…" : "Going live…"); }
+  catch (e) { toast("OBS: " + e.message); }
+};
+$("rec").onclick = async () => {
+  const on = S.record && S.record.active;
+  if (on && needsConfirm($("rec"), "rec", "Stop? Click again")) return;
+  try { await act(on ? "record_stop" : "record_start"); toast(on ? "Recording saved" : "Recording…"); }
+  catch (e) { toast("OBS: " + e.message); }
+};
+$("pause").onclick = () => act("record_pause").catch(e => toast("OBS: " + e.message));
+$("clip").onclick = async () => {
+  try {
+    if (S.replay && S.replay.active) { await act("replay_save"); toast("Clip saved to your recordings folder"); }
+    else { await act("replay_start"); toast("Clips ready — press Save Clip after something good happens"); }
+  } catch (e) { toast("OBS: " + e.message); }
+};
+$("folder").onclick = () => act("folder").catch(e => toast("OBS: " + e.message));
+$("scenes").onclick = e => { const b = e.target.closest("[data-scene]"); if (!b) return;
+  const name = decodeURIComponent(b.dataset.scene);
+  S.scene = name; draw();                      // light it up straight away
+  act("scene", { name }).then(poll).catch(x => { toast("OBS: " + x.message); poll(); }); };
+$("toggles").onclick = e => {
+  const m = e.target.closest("[data-mute]"), it = e.target.closest("[data-item]");
+  if (m) act("mute", { name: decodeURIComponent(m.dataset.mute) }).then(poll).catch(x => toast("OBS: " + x.message));
+  if (it) act("item", { id: +it.dataset.item, enabled: it.dataset.en !== "true" }).then(poll).catch(x => toast("OBS: " + x.message));
+};
+</script>
+</body>
+</html>
