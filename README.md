@@ -7,7 +7,7 @@
 - a game-art screensaver;
 - the firmware and links for three small hardware controllers: a 5" WiFi touchscreen, a round stream screen and a USB key pad.
 
-PCDash is the sister project of [ClusterForge](../ClusterForge). It runs on the same PC and reads game-server status through ClusterForge's API, but it's a separate app.
+PCDash is the sister project of [ClusterForge](https://github.com/Dracon420/ClusterForge). It runs on the same PC and reads game-server status through ClusterForge's API, but it's a separate app.
 
 ![Glance view](docs/screenshots/01-glance.png)
 
@@ -79,7 +79,7 @@ PCDash is the sister project of [ClusterForge](../ClusterForge). It runs on the 
 
 ## Install
 
-Requirements: Windows 10 or 11 and Python 3.12. OBS 28 or newer with WebSocket enabled is optional. [ClusterForge](../ClusterForge) is optional too: it's needed for the server buttons.
+Requirements: Windows 10 or 11 and Python 3.12. OBS 28 or newer with WebSocket enabled is optional. [ClusterForge](https://github.com/Dracon420/ClusterForge) is optional too: it's needed for the server buttons.
 
 ```bash
 pip install -r requirements.txt
@@ -88,7 +88,7 @@ pythonw pcdash_tray.pyw
 
 - `launch.ps1` starts it the same way, and is suited to a logon scheduled task.
 - The dashboard is at `http://127.0.0.1:8095`. It **only listens on this PC**. The phone remote is the separate, key-protected `remote.py`.
-- To sign in to ClusterForge, PCDash reads ClusterForge's `secrets.json` from `..\ClusterForge\`, so keep the two projects side by side.
+- To sign in to ClusterForge, PCDash reads ClusterForge's `secrets.json` from `..\ClusterForge\`. Clone both repos into the same parent folder, for example `D:\Servers\ClusterForge` and `D:\Servers\PCDash`.
 
 **K-Touch firmware:**
 1. Copy `ktouch-fw/src/app/ktouch_token.example.h` to `ktouch_token.h` and set the token.

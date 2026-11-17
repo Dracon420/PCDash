@@ -72,4 +72,4 @@ The **licensor** is the individual or entity offering these terms, and the **sof
 
 **Use** means anything you do with the software requiring one of your licenses.
 
-Required Notice: Copyright 2026 Dracon420 (https://github.com/Dracon420/ClusterForge). All rights not granted above are reserved.
+Required Notice: Copyright 2026 Dracon420 (https://github.com/Dracon420/PCDash). All rights not granted above are reserved.
