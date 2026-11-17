@@ -26,7 +26,7 @@
   <iframe id="stream" src="/stream" title="Stream Control"></iframe>
   <div class="divider"></div>
   <iframe id="dash" src="/" title="PC Dashboard"></iframe>
-  <iframe id="ark" title="ArkPanel"></iframe>
+  <iframe id="ark" title="ClusterForge"></iframe>
   <div id="flash"></div>
 <script>
 // The KNOMI's left/right swipes change the view on the PC; follow it here.
@@ -42,7 +42,7 @@ async function poll() {
     if (j.view !== view && j.view !== "discord") {
       view = j.view;
       document.body.className = view;
-      // ArkPanel loads the first time it is shown, then stays signed in.
+      // ClusterForge loads the first time it is shown, then stays signed in.
       const ark = document.getElementById("ark");
       if (view === "ark" && !ark.src) ark.src = "/ark-open";
       if (!first) {

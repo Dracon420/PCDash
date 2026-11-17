@@ -7,7 +7,7 @@
 - a game-art screensaver;
 - the firmware and links for three small hardware controllers: a 5" WiFi touchscreen, a round stream screen and a USB key pad.
 
-PCDash is the sister project of [ArkPanel](../ArkPanel). It runs on the same PC and reads game-server status through ArkPanel's API, but it's a separate app.
+PCDash is the sister project of [ClusterForge](../ClusterForge). It runs on the same PC and reads game-server status through ClusterForge's API, but it's a separate app.
 
 ![Glance view](docs/screenshots/01-glance.png)
 
@@ -21,9 +21,9 @@ PCDash is the sister project of [ArkPanel](../ArkPanel). It runs on the same PC 
 
 - **Glance view:** clock, large CPU, GPU, GPU temperature and memory gauges, network graph, game-server summary, power plan and drive space.
 - **Detail view:** per-core CPU, committed and free memory, the processes using the most memory, GPU VRAM, fan, power, clock and encoder load, plus:
-  - **Game servers:** every server with its host, uptime, memory and Restart, Stop and Start buttons (through ArkPanel);
+  - **Game servers:** every server with its host, uptime, memory and Restart, Stop and Start buttons (through ClusterForge);
   - **Power plan:** Saver, Balanced or High; Windows Game Mode; *Gaming* and *Normal* presets;
-  - **Open:** one-tap launchers for ArkPanel, Sunshine, Task Manager, Game Bar, Sound, Display and OBS.
+  - **Open:** one-tap launchers for ClusterForge, Sunshine, Task Manager, Game Bar, Sound, Display and OBS.
 - It's laid out for **half of a 1080×1920 portrait monitor** (1080×960).
 
 ### The portrait screen (`/onn`, `onn_view.py`, `pcdash_tray.pyw`)
@@ -51,7 +51,7 @@ PCDash is the sister project of [ArkPanel](../ArkPanel). It runs on the same PC 
 | File | Job |
 |---|---|
 | `window_placer.py`, `screens.json` | Moves chosen programs, such as slicers, CAD and games, to the **main** screen when they open. The portrait screen is the Windows primary display, so everything else opens there. |
-| `taskbar_hide.py` | Removes Discord's and ArkPanel's taskbar *buttons* using `ITaskbarList::DeleteTab`. It never hides or restyles the windows. |
+| `taskbar_hide.py` | Removes Discord's and ClusterForge's taskbar *buttons* using `ITaskbarList::DeleteTab`. It never hides or restyles the windows. |
 | `audio_mixer.py`, `mixer.json` | Per-app volume and mute through Windows Core Audio called directly with `ctypes`, so pycaw isn't needed. Volumes are remembered per app. |
 | `game_art.py`, `make_tile_art.py`, `games.json` | Tile art for every game and app. It uses your own picture, a file in `game-art/` or the game's own Store splash screen. |
 | `remote.py` | **Web remote:** the touchscreen's interface on your phone, on port 8096, protected by a key. It works over WiFi or Tailscale. |
@@ -79,7 +79,7 @@ PCDash is the sister project of [ArkPanel](../ArkPanel). It runs on the same PC 
 
 ## Install
 
-Requirements: Windows 10 or 11 and Python 3.12. OBS 28 or newer with WebSocket enabled is optional. [ArkPanel](../ArkPanel) is optional too: it's needed for the server buttons.
+Requirements: Windows 10 or 11 and Python 3.12. OBS 28 or newer with WebSocket enabled is optional. [ClusterForge](../ClusterForge) is optional too: it's needed for the server buttons.
 
 ```bash
 pip install -r requirements.txt
@@ -88,7 +88,7 @@ pythonw pcdash_tray.pyw
 
 - `launch.ps1` starts it the same way, and is suited to a logon scheduled task.
 - The dashboard is at `http://127.0.0.1:8095`. It **only listens on this PC**. The phone remote is the separate, key-protected `remote.py`.
-- To sign in to ArkPanel, PCDash reads ArkPanel's `secrets.json` from `..\ArkPanel\`, so keep the two projects side by side.
+- To sign in to ClusterForge, PCDash reads ClusterForge's `secrets.json` from `..\ClusterForge\`, so keep the two projects side by side.
 
 **K-Touch firmware:**
 1. Copy `ktouch-fw/src/app/ktouch_token.example.h` to `ktouch_token.h` and set the token.

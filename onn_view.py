@@ -4,7 +4,7 @@ Views, in swipe order:
     split    Stream Control on top, PC Dashboard below   (the PCDash window)
     dash     PC Dashboard only                            (PCDash window, page re-laid out)
     stream   Stream Control only                          (PCDash window, page re-laid out)
-    ark      ArkPanel (:8090) full screen                 (PCDash window, an iframe signed in via /desktop/open)
+    ark      ClusterForge (:8090) full screen                 (PCDash window, an iframe signed in via /desktop/open)
     discord  Discord, docked to the Onn and brought to the front
 
 Windows are raised WITHOUT taking focus (SWP_NOACTIVATE / SW_SHOWNOACTIVATE),
@@ -24,7 +24,7 @@ import time
 from ctypes import wintypes
 
 VIEWS = ["split", "dash", "stream", "ark", "discord"]
-VIEW_NAMES = {"split": "Stream + Dashboard", "dash": "Dashboard", "stream": "Stream Control", "ark": "ArkPanel", "discord": "Discord"}
+VIEW_NAMES = {"split": "Stream + Dashboard", "dash": "Dashboard", "stream": "Stream Control", "ark": "ClusterForge", "discord": "Discord"}
 STATE = {"view": "split", "changed": time.time()}
 _lock = threading.Lock()
 CHANGED = threading.Condition()      # the Onn page long-polls on this

@@ -5,7 +5,7 @@ POSTs the whole picture to http://<k-touch>/state: PC stats, game servers, OBS
 status and the game list. The reply lists actions tapped since the last push:
 
     launch:<game id>                 start a PC game from games.json
-    server:<server id>:<action>      start / stop / restart via ArkPanel
+    server:<server id>:<action>      start / stop / restart via ClusterForge
                                      (stop and restart are confirmed on the device)
     obs:<action>                     stream_start/stop (confirmed on the device),
                                      record_start/stop/pause, replay_save,

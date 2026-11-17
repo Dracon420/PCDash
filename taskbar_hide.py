@@ -1,4 +1,4 @@
-"""Keep Discord's and ArkPanel's taskbar buttons off the taskbar (user, 2026-11-11).
+"""Keep Discord's and ClusterForge's taskbar buttons off the taskbar (user, 2026-11-11).
 
 Uses the shell's ITaskbarList::DeleteTab, which removes only the BUTTON. The
 window itself is never hidden, restyled or ShowWindow()-ed, which matters for
@@ -6,8 +6,8 @@ Discord: forcing its window state from outside leaves a dead, stretched frame
 (see onn_view.py). Explorer re-adds a button whenever a window is shown again
 (Discord coming back from its tray, say), so this re-applies every 2 s.
 
-Discord keeps its own tray icon. ArkPanel's desktop app has none, so the PCDash
-tray menu gets "Show ArkPanel" (show_arkpanel below). On quit, restore() puts the
+Discord keeps its own tray icon. ClusterForge's desktop app has none, so the PCDash
+tray menu gets "Show ClusterForge" (show_clusterforge below). On quit, restore() puts the
 buttons back so nothing is left unreachable.
 """
 from __future__ import annotations
@@ -60,8 +60,8 @@ class _Taskbar:
         _HWND_FN(self.vt[5])(self.p, hwnd)
 
 
-def arkpanel_window():
-    hits = onn_view._windows(lambda h, t, c: t.startswith("ArkPanel") and user32.IsWindowVisible(h)
+def clusterforge_window():
+    hits = onn_view._windows(lambda h, t, c: t.startswith("ClusterForge") and user32.IsWindowVisible(h)
                              and not c.startswith("Chrome_WidgetWin"))   # not the Onn's own page
     return hits[0] if hits else None
 
@@ -71,7 +71,7 @@ def targets() -> list[int]:
     d = onn_view.discord_window()
     if d and user32.IsWindowVisible(d):
         out.append(d)
-    a = arkpanel_window()
+    a = clusterforge_window()
     if a:
         out.append(a)
     return out
@@ -88,7 +88,7 @@ def run(log=lambda m: None) -> None:
         log(f"taskbar: {exc}")
         return
     run.tb = tb
-    log("taskbar: hiding Discord and ArkPanel buttons")
+    log("taskbar: hiding Discord and ClusterForge buttons")
     while True:
         try:
             with _lock:
@@ -140,27 +140,27 @@ def restore() -> None:
                     pass
 
 
-ARKPANEL_APP = r"D:\Servers\ArkPanel\ArkPanel.py"
+CLUSTERFORGE_APP = r"D:\Servers\ClusterForge\ClusterForge.py"
 
 
-def show_arkpanel() -> bool:
-    """Bring the ArkPanel desktop app to the front, or start it if it isn't running.
+def show_clusterforge() -> bool:
+    """Bring the ClusterForge desktop app to the front, or start it if it isn't running.
 
-    Used by the tray menu and the dashboard's ArkPanel button (which used to open
+    Used by the tray menu and the dashboard's ClusterForge button (which used to open
     the web version in the default browser). A background process may not take
     the foreground, so lift it with the topmost trick as well."""
     import os
     import subprocess
     import sys
-    h = arkpanel_window()
+    h = clusterforge_window()
     if h:
         if user32.IsIconic(h):
             user32.ShowWindow(h, 9)                      # SW_RESTORE
         onn_view._raise(h)
         user32.SetForegroundWindow(h)
         return True
-    if not os.path.isfile(ARKPANEL_APP):
+    if not os.path.isfile(CLUSTERFORGE_APP):
         return False
     pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
-    subprocess.Popen([pyw, ARKPANEL_APP], cwd=os.path.dirname(ARKPANEL_APP), creationflags=0x08000000)
+    subprocess.Popen([pyw, CLUSTERFORGE_APP], cwd=os.path.dirname(CLUSTERFORGE_APP), creationflags=0x08000000)
     return True

@@ -1,8 +1,8 @@
 """PCDash - a half-screen system dashboard for PC1's portrait monitor.
 
 A separate, small Flask app on 127.0.0.1:8095. It reads local hardware stats
-itself and talks to ArkPanel (127.0.0.1:8090) over its normal HTTP API for
-game-server status and start/stop. It never imports or modifies ArkPanel, so
+itself and talks to ClusterForge (127.0.0.1:8090) over its normal HTTP API for
+game-server status and start/stop. It never imports or modifies ClusterForge, so
 it can be started, stopped or crash without touching the panel or any server.
 
 Run:  pythonw dash.py      (or use launch.ps1, which also opens the window)
@@ -29,7 +29,7 @@ import obs
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = 8095
 PANEL = "http://127.0.0.1:8090"
-PANEL_SECRETS = r"D:\Servers\ArkPanel\secrets.json"
+PANEL_SECRETS = r"D:\Servers\ClusterForge\secrets.json"
 NO_WINDOW = 0x08000000  # CREATE_NO_WINDOW - keep pythonw from flashing consoles
 
 # A per-run token the page must echo on every POST. The server only listens on
@@ -269,12 +269,12 @@ def server_poller() -> None:
                 STATE["servers_at"] = time.time()
         except Exception as exc:  # noqa: BLE001
             with LOCK:
-                STATE["servers_error"] = f"ArkPanel not answering ({type(exc).__name__})"
+                STATE["servers_error"] = f"ClusterForge not answering ({type(exc).__name__})"
         time.sleep(10)
 
 
 # Only start / stop / restart are exposed. Everything riskier (kill, restore,
-# mods, map switches) stays in ArkPanel itself, where it has its own guards.
+# mods, map switches) stays in ClusterForge itself, where it has its own guards.
 SAFE_ACTIONS = {"start", "stop", "restart"}
 
 
@@ -332,7 +332,7 @@ LAUNCH = {
     "sound": ["explorer.exe", "ms-settings:sound"],
     "display": ["explorer.exe", "ms-settings:display"],
     "gamebar": ["explorer.exe", "ms-gamebar:"],
-    "arkpanel": ["explorer.exe", "http://127.0.0.1:8090/"],
+    "clusterforge": ["explorer.exe", "http://127.0.0.1:8090/"],
     "sunshine": ["explorer.exe", "https://localhost:47990/"],
     "stream": ["powershell.exe", "-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass",
                "-File", os.path.join(HERE, "launch.ps1"), "-Stream"],
@@ -406,7 +406,7 @@ def api_servers():
 
 
 def server_control(server_id: str, action: str, source: str = "dashboard") -> tuple[int, dict]:
-    """Start/stop/restart one game server through ArkPanel. Shared by the page and the K-Touch."""
+    """Start/stop/restart one game server through ClusterForge. Shared by the page and the K-Touch."""
     path = control_path(server_id, action)
     if not path:
         return 400, {"error": "not allowed"}
@@ -473,9 +473,9 @@ def api_settings_set():
 @app.post("/api/launch/<what>")
 def api_launch(what):
     _check_csrf()
-    if what == "arkpanel":                       # the desktop APP, not the web page
+    if what == "clusterforge":                       # the desktop APP, not the web page
         import taskbar_hide
-        ok = taskbar_hide.show_arkpanel()
+        ok = taskbar_hide.show_clusterforge()
         return jsonify({"ok": ok}), (200 if ok else 404)
     cmd = LAUNCH.get(what)
     if not cmd:
@@ -513,7 +513,7 @@ def api_onn_set_view():
 
 @app.get("/ark-open")
 def ark_open():
-    """Sign the Onn's ArkPanel view in, the way ArkPanel's own desktop app does.
+    """Sign the Onn's ClusterForge view in, the way ClusterForge's own desktop app does.
 
     /desktop/open trades the desktop_key from secrets.json for a session and only
     accepts it from loopback. PCDash itself only listens on loopback, and anything

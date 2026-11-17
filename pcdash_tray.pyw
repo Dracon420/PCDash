@@ -310,7 +310,7 @@ class Tray:
         m = user32.CreatePopupMenu()
         user32.AppendMenuW(m, MF_STRING, ID_TOGGLE, "Hide PCDash" if shown else "Show PCDash")
         user32.AppendMenuW(m, MF_STRING, ID_REOPEN, "Reopen window")
-        user32.AppendMenuW(m, MF_STRING, ID_ARK, "Show ArkPanel")
+        user32.AppendMenuW(m, MF_STRING, ID_ARK, "Show ClusterForge")
         user32.AppendMenuW(m, MF_STRING, ID_OBS, "Open OBS")
         user32.AppendMenuW(m, MF_STRING, ID_SAVER, "Start screensaver")
         user32.AppendMenuW(m, MF_SEPARATOR, 0, None)
@@ -335,7 +335,7 @@ class Tray:
             import saver
             saver.start_now()
         elif cmd == ID_ARK:
-            show_arkpanel()                          # on this thread: it holds the foreground right
+            show_clusterforge()                          # on this thread: it holds the foreground right
         elif cmd == ID_QUIT:
             log("quit from tray")
             try:
@@ -349,7 +349,7 @@ class Tray:
             self.remove()
             try:
                 import taskbar_hide
-                taskbar_hide.restore()               # give Discord/ArkPanel their buttons back
+                taskbar_hide.restore()               # give Discord/ClusterForge their buttons back
             except Exception:
                 pass
             os._exit(0)                              # stops the in-process server threads too
@@ -377,13 +377,13 @@ class Tray:
             user32.DispatchMessageW(ctypes.byref(msg))
 
 
-ARKPANEL_APP = r"D:\Servers\ArkPanel\ArkPanel.py"
+CLUSTERFORGE_APP = r"D:\Servers\ClusterForge\ClusterForge.py"
 
 
-def show_arkpanel():
-    """ArkPanel's desktop window has no taskbar button (taskbar_hide), so it is here."""
+def show_clusterforge():
+    """ClusterForge's desktop window has no taskbar button (taskbar_hide), so it is here."""
     import taskbar_hide
-    taskbar_hide.show_arkpanel()
+    taskbar_hide.show_clusterforge()
 
 
 def single_instance() -> bool:
