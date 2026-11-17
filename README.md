@@ -141,3 +141,9 @@ tools/              icon, channel-art and stream-screen generators
 ```
 
 Game artwork (`game-art/`), stream graphics (`stream-screens/`), firmware dumps and device keys aren't included.
+
+---
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md). You're free to use, study and change it for personal, hobby, educational and other **noncommercial** purposes. **Commercial use, including selling it or running it as a paid service, isn't allowed** without a separate licence from the author; open an issue to ask.
